@@ -1,5 +1,6 @@
 package com.greenwald.aaron.ridetracker;
 
+import com.google.android.gms.maps.model.LatLng;
 import com.google.gson.Gson;
 
 import java.time.ZonedDateTime;
@@ -18,8 +19,17 @@ public class TrackPoint {
         this.dateTime = dateTime;
     }
 
+    static TrackPoint fromString(String string) {
+        Gson gson = new Gson();
+        return gson.fromJson(string, TrackPoint.class);
+    }
+
     public String toString() {
         Gson gson = new Gson();
         return gson.toJson(this);
+    }
+
+    public LatLng getLatLng() {
+        return new LatLng(this.latitude, this.longitude);
     }
 }

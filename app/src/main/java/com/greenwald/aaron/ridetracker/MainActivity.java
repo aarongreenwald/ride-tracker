@@ -1,39 +1,42 @@
 package com.greenwald.aaron.ridetracker;
 
 import android.Manifest;
-import android.content.ComponentName;
+import android.app.Fragment;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
+import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        final FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-
+            public void onClick(final View view) {
                 AsyncTask.execute(new Runnable() {
                     @Override
                     public void run() {
@@ -41,14 +44,13 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
 
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
             }
         });
+
     }
 
     private void trackLocation() {
-        Context context = MainActivity.this;
+        final Context context = MainActivity.this;
 
         final String TAG = "TRACKER:";
         Log.i(TAG, "starting");
@@ -64,12 +66,32 @@ public class MainActivity extends AppCompatActivity {
                 ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PackageManager.PERMISSION_GRANTED);
             } else {
                 Intent intent = new Intent(this, LocationTrackingService.class);
-                startService(intent);
-                //LocationTrackingService.performOnBackgroundThread(new Thread());
+                if (LocationTrackingService.isRunning) {
+                    stopService(intent);
+                    LocationTrackingService.isRunning = false;
+                } else {
+                    startService(intent);
+                    LocationTrackingService.isRunning = true;
+                }
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        final FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+                        fab.setImageResource(LocationTrackingService.isRunning ?
+                                android.R.drawable.ic_media_pause :
+                                android.R.drawable.ic_media_play
+                        );
+
+                        String text = String.format("Tracking %s", LocationTrackingService.isRunning ? "on" : "paused");
+                        Toast toast = Toast.makeText(context, text, Toast.LENGTH_LONG);
+                        toast.show();
+                    }
+                });
+
             }
 
         } else {
-            // GlobalData.showSettingsAlert(context);
             Log.i(TAG, "no enabled provider");
         }
     }
@@ -113,3 +135,4 @@ public class MainActivity extends AppCompatActivity {
     }
 
 }
+

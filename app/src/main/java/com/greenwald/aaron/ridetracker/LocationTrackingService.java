@@ -14,25 +14,14 @@ import android.widget.Toast;
 
 import java.time.Instant;
 import java.util.Date;
+import java.util.LinkedList;
 
 //https://stackoverflow.com/a/14478281
 public class LocationTrackingService extends Service
 {
-//    public static final String BROADCAST_ACTION = "Hello World";
-//    private static final int TWO_MINUTES = 1000 * 60 * 2;
     public LocationManager locationManager;
     public MyLocationListener listener;
-//    public Location previousBestLocation = null;
-
-    Intent intent;
-//    int counter = 0;
-
-    @Override
-    public void onCreate()
-    {
-        super.onCreate();
-//        intent = new Intent(BROADCAST_ACTION);
-    }
+    static boolean isRunning = false;
 
     @SuppressLint("MissingPermission")
     @Override
@@ -40,7 +29,7 @@ public class LocationTrackingService extends Service
     {
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         listener = new MyLocationListener();
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 500, 0, listener);
+//        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 500, 0, listener);
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0, listener);
     }
 
@@ -106,7 +95,6 @@ public class LocationTrackingService extends Service
 
     @Override
     public void onDestroy() {
-        // handler.removeCallbacks(sendUpdatesToUI);
         super.onDestroy();
         Log.v("STOP_SERVICE", "DONE");
         locationManager.removeUpdates(listener);
@@ -124,17 +112,22 @@ public class LocationTrackingService extends Service
     }
 
 
+
+
     public class MyLocationListener implements LocationListener
     {
+
+        LinkedList<TrackPoint> track = new LinkedList<TrackPoint>();
 
         public void onLocationChanged(final Location loc)
         {
             TrackPoint trackPoint = new TrackPoint(loc.getLatitude(), loc.getLongitude(), loc.getAccuracy(), Date.from(Instant.now()));
+            track.add(trackPoint);
             Log.i("AGGG", trackPoint.toString());
-//            intent.putExtra("Latitude", loc.getLatitude());
-//            intent.putExtra("Longitude", loc.getLongitude());
-//            intent.putExtra("Provider", loc.getProvider());
-//            sendBroadcast(intent);
+            Intent intent = new Intent();
+            intent.putExtra("point", trackPoint.toString());
+            intent.setAction("LOCATION_CHANGED");
+            sendBroadcast(intent);
         }
 
         public void onProviderDisabled(String provider)
