@@ -27,7 +27,6 @@ public class LocationTrackingService extends Service
     public MyLocationListener listener;
     static boolean isRunning = false;
     private DataStore ds;
-    private Trip trip;
     private Segment segment;
 
     @SuppressLint("MissingPermission")
@@ -36,7 +35,14 @@ public class LocationTrackingService extends Service
     {
         this.ds = new DataStore(getApplicationContext());
         //For now every segment is a new trip
-        this.trip = ds.createTrip("Some Trip");
+        Trip trip = ds.createTrip("Some Trip");
+
+        Long tripId = intent.getLongExtra("tripId", -1);
+        if (tripId == -1) {
+            throw new RuntimeException("Cannot track location without a valid tripId");
+        }
+        trip = ds.getTrip(tripId);
+
         this.segment = ds.startTripSegment(trip);
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         listener = new MyLocationListener(this.ds, this.segment);

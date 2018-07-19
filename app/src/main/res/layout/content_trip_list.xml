@@ -10,7 +10,7 @@
 
     <fragment
         android:id="@+id/fragment"
-        android:name="com.greenwald.aaron.ridetracker.TripFragment"
+        android:name="com.greenwald.aaron.ridetracker.TripListFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 </android.support.v4.widget.NestedScrollView>

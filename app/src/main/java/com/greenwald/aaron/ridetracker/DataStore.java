@@ -6,6 +6,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.support.annotation.NonNull;
 
 import com.greenwald.aaron.ridetracker.model.Segment;
 import com.greenwald.aaron.ridetracker.model.TrackPoint;
@@ -49,6 +50,10 @@ class DataStore {
 
     ArrayList<Trip> getTrips() {
         return db.getTrips();
+    }
+
+    public Trip getTrip(Long id) {
+        return db.getTrip(id);
     }
 
     class DatabaseHelper extends SQLiteOpenHelper {
@@ -168,21 +173,42 @@ class DataStore {
         public ArrayList<Trip> getTrips() {
             ArrayList<Trip> trips = new ArrayList<Trip>();
 
-            String selectQuery = "SELECT  * FROM " + TABLE_TRIPS + " t";
+            String selectQuery = "SELECT  * FROM " + TABLE_TRIPS + " order by " + COL_ID + " desc";
 
 
             SQLiteDatabase db = this.getReadableDatabase();
             Cursor c = db.rawQuery(selectQuery, null);
 
-            // looping through all rows and adding to list
             if (c.moveToFirst()) {
                 do {
-                    Trip trip = new Trip(c.getString(c.getColumnIndex(COL_TRIP_NAME)));
+                    Trip trip = createTripFromCursor(c);
                     trips.add(trip);
                 } while (c.moveToNext());
             }
 
             return trips;
+        }
+
+        public Trip getTrip(Long id) {
+            SQLiteDatabase db = this.getReadableDatabase();
+
+            String selectQuery = "SELECT  * FROM " + TABLE_TRIPS + " WHERE "
+                    + COL_ID + " = " + id;
+
+            Cursor c = db.rawQuery(selectQuery, null);
+
+            if (c != null)
+                c.moveToFirst();
+
+            return createTripFromCursor(c);
+        }
+
+        @NonNull
+        private Trip createTripFromCursor(Cursor cursor) {
+            return new Trip(
+                cursor.getLong(cursor.getColumnIndex(COL_ID)),
+                cursor.getString(cursor.getColumnIndex(COL_TRIP_NAME))
+            );
         }
     }
 }

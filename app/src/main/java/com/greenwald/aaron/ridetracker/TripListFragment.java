@@ -14,7 +14,7 @@ import com.greenwald.aaron.ridetracker.model.Trip;
 
 import java.util.ArrayList;
 
-public class TripFragment extends Fragment {
+public class TripListFragment extends Fragment {
 
     // TODO: Customize parameter argument names
     private static final String ARG_COLUMN_COUNT = "column-count";
@@ -26,10 +26,10 @@ public class TripFragment extends Fragment {
      * Mandatory empty constructor for the fragment manager to instantiate the
      * fragment (e.g. upon screen orientation changes).
      */
-    public TripFragment() {}
+    public TripListFragment() {}
 
-    public static TripFragment newInstance(int columnCount) {
-        TripFragment fragment = new TripFragment();
+    public static TripListFragment newInstance(int columnCount) {
+        TripListFragment fragment = new TripListFragment();
         Bundle args = new Bundle();
         args.putInt(ARG_COLUMN_COUNT, columnCount);
         fragment.setArguments(args);
@@ -62,7 +62,7 @@ public class TripFragment extends Fragment {
             } else {
                 recyclerView.setLayoutManager(new GridLayoutManager(context, mColumnCount));
             }
-            recyclerView.setAdapter(new MyTripRecyclerViewAdapter(trips, mListener));
+            recyclerView.setAdapter(new TripRecyclerViewAdapter(trips, mListener));
         }
         return view;
     }

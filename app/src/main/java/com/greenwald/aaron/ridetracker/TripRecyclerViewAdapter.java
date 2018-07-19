@@ -6,40 +6,40 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.greenwald.aaron.ridetracker.TripFragment.OnListFragmentInteractionListener;
+import com.greenwald.aaron.ridetracker.TripListFragment.OnListFragmentInteractionListener;
 import com.greenwald.aaron.ridetracker.model.Trip;
 
 import java.util.List;
 
-public class MyTripRecyclerViewAdapter extends RecyclerView.Adapter<MyTripRecyclerViewAdapter.ViewHolder> {
+public class TripRecyclerViewAdapter extends RecyclerView.Adapter<TripRecyclerViewAdapter.ViewHolder> {
 
-    private final List<Trip> mValues;
-    private final OnListFragmentInteractionListener mListener;
+    private final List<Trip> trips;
+    private final OnListFragmentInteractionListener interactionListener;
 
-    public MyTripRecyclerViewAdapter(List<Trip> items, OnListFragmentInteractionListener listener) {
-        mValues = items;
-        mListener = listener;
+    TripRecyclerViewAdapter(List<Trip> items, OnListFragmentInteractionListener listener) {
+        trips = items;
+        interactionListener = listener;
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.fragment_trip, parent, false);
+                .inflate(R.layout.fragment_trip_listitem, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(final ViewHolder holder, int position) {
-        holder.mItem = mValues.get(position);
-        holder.mContentView.setText(mValues.get(position).getName());
+        holder.trip = trips.get(position);
+        holder.textView.setText(trips.get(position).getName());
 
-        holder.mView.setOnClickListener(new View.OnClickListener() {
+        holder.view.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (null != mListener) {
+                if (null != interactionListener) {
                     // Notify the active callbacks interface (the activity, if the
                     // fragment is attached to one) that an item has been selected.
-                    mListener.onListFragmentInteraction(holder.mItem);
+                    interactionListener.onListFragmentInteraction(holder.trip);
                 }
             }
         });
@@ -47,23 +47,23 @@ public class MyTripRecyclerViewAdapter extends RecyclerView.Adapter<MyTripRecycl
 
     @Override
     public int getItemCount() {
-        return mValues.size();
+        return trips.size();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {
-        public final View mView;
-        public final TextView mContentView;
-        public Trip mItem;
+        public final View view;
+        public final TextView textView;
+        public Trip trip;
 
         public ViewHolder(View view) {
             super(view);
-            mView = view;
-            mContentView = (TextView) view.findViewById(R.id.tripName);
+            this.view = view;
+            textView = view.findViewById(R.id.tripName);
         }
 
         @Override
         public String toString() {
-            return super.toString() + " '" + mContentView.getText() + "'";
+            return super.toString() + " '" + textView.getText() + "'";
         }
     }
 }

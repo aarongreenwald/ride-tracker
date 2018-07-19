@@ -31,7 +31,6 @@ public class MapFragment extends Fragment {
     MapView mapView;
     GoogleMap map;
     private IntentFilter intentFilter = new IntentFilter();
-    ;
     PolylineOptions polylineOptions = new PolylineOptions();
 
 
@@ -80,7 +79,7 @@ public class MapFragment extends Fragment {
         intentFilter.addAction("LOCATION_CHANGED");
 
         View view = inflater.inflate(R.layout.fragment_map, container, false);
-        mapView = (MapView) view.findViewById(R.id.mapView);
+        mapView = view.findViewById(R.id.mapView);
         mapView.onCreate(savedInstanceState);
 
         mapView.getMapAsync(new OnMapReadyCallback() {

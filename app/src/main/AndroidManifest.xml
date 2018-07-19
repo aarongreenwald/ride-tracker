@@ -54,8 +54,8 @@
         <service android:name=".LocationTrackingService" />
 
         <activity
-            android:name=".MainActivity"
-            android:label="@string/title_activity_main"
+            android:name=".TripActivity"
+            android:parentActivityName=".TripListActivity"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".TripListActivity"

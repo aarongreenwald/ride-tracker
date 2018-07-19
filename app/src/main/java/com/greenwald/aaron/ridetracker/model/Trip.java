@@ -14,6 +14,11 @@ public class Trip {
         this.name = name;
     }
 
+    public Trip(long id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
     public String getName() {
         return name;
     }
