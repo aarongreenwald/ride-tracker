@@ -3,6 +3,7 @@ package com.greenwald.aaron.ridetracker;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
@@ -11,6 +12,7 @@ import com.greenwald.aaron.ridetracker.model.TrackPoint;
 import com.greenwald.aaron.ridetracker.model.Trip;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Date;
 
 class DataStore {
@@ -43,6 +45,10 @@ class DataStore {
     void recordSegmentPoint(Segment segment, TrackPoint point) {
         //should the timestamp be set here, or does it come as part of the point?
         db.addSegmentPoint(segment, point);
+    }
+
+    ArrayList<Trip> getTrips() {
+        return db.getTrips();
     }
 
     class DatabaseHelper extends SQLiteOpenHelper {
@@ -157,6 +163,26 @@ class DataStore {
 
             db.update(TABLE_TRIP_SEGMENTS, values, COL_ID + " = ?",
                     new String[] { String.valueOf(id) });
+        }
+
+        public ArrayList<Trip> getTrips() {
+            ArrayList<Trip> trips = new ArrayList<Trip>();
+
+            String selectQuery = "SELECT  * FROM " + TABLE_TRIPS + " t";
+
+
+            SQLiteDatabase db = this.getReadableDatabase();
+            Cursor c = db.rawQuery(selectQuery, null);
+
+            // looping through all rows and adding to list
+            if (c.moveToFirst()) {
+                do {
+                    Trip trip = new Trip(c.getString(c.getColumnIndex(COL_TRIP_NAME)));
+                    trips.add(trip);
+                } while (c.moveToNext());
+            }
+
+            return trips;
         }
     }
 }

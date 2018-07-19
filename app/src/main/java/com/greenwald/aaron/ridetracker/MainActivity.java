@@ -1,11 +1,8 @@
 package com.greenwald.aaron.ridetracker;
 
 import android.Manifest;
-import android.app.Fragment;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
@@ -23,8 +20,6 @@ import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
 
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -33,7 +28,7 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        final FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+        final FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.playPauseButton);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(final View view) {
@@ -77,7 +72,7 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        final FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
+                        final FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.playPauseButton);
                         fab.setImageResource(LocationTrackingService.isRunning ?
                                 android.R.drawable.ic_media_pause :
                                 android.R.drawable.ic_media_play

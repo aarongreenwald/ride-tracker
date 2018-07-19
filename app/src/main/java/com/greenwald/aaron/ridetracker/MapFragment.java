@@ -79,7 +79,7 @@ public class MapFragment extends Fragment {
         polylineOptions.jointType(JointType.ROUND);
         intentFilter.addAction("LOCATION_CHANGED");
 
-        View view = inflater.inflate(R.layout.map_fragment, container, false);
+        View view = inflater.inflate(R.layout.fragment_map, container, false);
         mapView = (MapView) view.findViewById(R.id.mapView);
         mapView.onCreate(savedInstanceState);
 
