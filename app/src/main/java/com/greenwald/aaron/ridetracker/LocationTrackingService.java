@@ -12,6 +12,10 @@ import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.greenwald.aaron.ridetracker.model.Segment;
+import com.greenwald.aaron.ridetracker.model.TrackPoint;
+import com.greenwald.aaron.ridetracker.model.Trip;
+
 import java.time.Instant;
 import java.util.Date;
 import java.util.LinkedList;
@@ -22,13 +26,19 @@ public class LocationTrackingService extends Service
     public LocationManager locationManager;
     public MyLocationListener listener;
     static boolean isRunning = false;
+    private DataStore ds;
+    private Trip trip;
+    private Segment segment;
 
     @SuppressLint("MissingPermission")
     @Override
     public void onStart(Intent intent, int startId)
     {
+        this.ds = new DataStore(getApplicationContext());
+        this.trip = ds.createTrip("Some Trip");
+        this.segment = ds.startTripSegment(trip);
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        listener = new MyLocationListener();
+        listener = new MyLocationListener(this.ds, this.segment);
 //        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 500, 0, listener);
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0, listener);
     }
@@ -96,6 +106,7 @@ public class LocationTrackingService extends Service
     @Override
     public void onDestroy() {
         super.onDestroy();
+        this.ds.stopTripSegment(this.segment);
         Log.v("STOP_SERVICE", "DONE");
         locationManager.removeUpdates(listener);
     }
@@ -117,13 +128,21 @@ public class LocationTrackingService extends Service
     public class MyLocationListener implements LocationListener
     {
 
+        private final DataStore ds;
+        private final Segment segment;
         LinkedList<TrackPoint> track = new LinkedList<TrackPoint>();
+
+        public MyLocationListener(DataStore ds, Segment segment) {
+            this.ds = ds;
+            this.segment = segment;
+        }
 
         public void onLocationChanged(final Location loc)
         {
             TrackPoint trackPoint = new TrackPoint(loc.getLatitude(), loc.getLongitude(), loc.getAccuracy(), Date.from(Instant.now()));
             track.add(trackPoint);
             Log.i("AGGG", trackPoint.toString());
+            this.ds.recordSegmentPoint(this.segment, trackPoint);
             Intent intent = new Intent();
             intent.putExtra("point", trackPoint.toString());
             intent.setAction("LOCATION_CHANGED");
