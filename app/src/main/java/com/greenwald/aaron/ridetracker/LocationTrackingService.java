@@ -89,7 +89,12 @@ public class LocationTrackingService extends Service
 
         public void onLocationChanged(final Location loc)
         {
-            SegmentPoint segmentPoint = new SegmentPoint(loc.getLatitude(), loc.getLongitude(), loc.getAccuracy(), Date.from(Instant.now()));
+            SegmentPoint segmentPoint = new SegmentPoint(loc.getLatitude(),
+                    loc.getLongitude(),
+                    loc.getAccuracy(),
+                    Date.from(Instant.now()),
+                    loc.getAltitude()
+            );
             track.add(segmentPoint);
             Log.i("AGGG", segmentPoint.toString());
             this.ds.recordSegmentPoint(this.segment, segmentPoint);

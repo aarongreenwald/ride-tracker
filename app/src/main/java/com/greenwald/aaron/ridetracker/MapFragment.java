@@ -49,7 +49,7 @@ public class MapFragment extends Fragment {
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals("LOCATION_CHANGED")) {
                 String point = intent.getStringExtra("point");
-                SegmentPoint location = SegmentPoint.fromString(point);
+                SegmentPoint location = SegmentPoint.Companion.fromString(point);
                 addPointToMap(location);
                 focusOnLocation(location);
             }
