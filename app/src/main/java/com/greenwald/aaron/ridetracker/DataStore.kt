@@ -48,11 +48,11 @@ internal class DataStore(context: Context) {
         db.addSegmentPoint(segment, point)
     }
 
-    fun getTrip(id: Long?): Trip {
+    fun getTrip(id: Long): Trip {
         return db.getTrip(id)
     }
 
-    fun getTripWithDetails(id: Long?): Trip {
+    fun getTripWithDetails(id: Long): Trip {
         return db.getTripWithDetails(id)
     }
 
@@ -64,7 +64,6 @@ internal class DataStore(context: Context) {
                 val trips = ArrayList<Trip>()
 
                 val selectQuery = "SELECT  * FROM $TABLE_TRIPS order by $COL_ID desc"
-
 
                 val db = this.readableDatabase
                 val c = db.rawQuery(selectQuery, null)
@@ -87,9 +86,9 @@ internal class DataStore(context: Context) {
         }
 
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-            db.execSQL("DROP TABLE IF EXISTS " + TABLE_TRIPS)
-            db.execSQL("DROP TABLE IF EXISTS " + TABLE_TRIP_SEGMENTS)
-            db.execSQL("DROP TABLE IF EXISTS " + TABLE_SEGMENT_POINTS)
+            db.execSQL("DROP TABLE IF EXISTS $TABLE_TRIPS")
+            db.execSQL("DROP TABLE IF EXISTS $TABLE_TRIP_SEGMENTS")
+            db.execSQL("DROP TABLE IF EXISTS $TABLE_SEGMENT_POINTS")
 
             onCreate(db)
         }
@@ -133,15 +132,14 @@ internal class DataStore(context: Context) {
             val values = ContentValues()
             values.put(COL_SEGMENT_STOPPED_TIMESTAMP, stoppedTimestamp.toString())
 
-            db.update(TABLE_TRIP_SEGMENTS, values, COL_ID + " = ?",
+            db.update(TABLE_TRIP_SEGMENTS, values, "$COL_ID = ?",
                     arrayOf(id.toString()))
         }
 
-        fun getTrip(id: Long?): Trip {
+        fun getTrip(id: Long): Trip {
             val db = this.readableDatabase
 
-            val selectQuery = ("SELECT  * FROM " + TABLE_TRIPS + " WHERE "
-                    + COL_ID + " = " + id)
+            val selectQuery = """SELECT  * FROM $TABLE_TRIPS WHERE $COL_ID = $id"""
 
             val c = db.rawQuery(selectQuery, null)
 
@@ -150,7 +148,7 @@ internal class DataStore(context: Context) {
             return createTripFromCursor(c)
         }
 
-        fun getTripWithDetails(id: Long?): Trip {
+        fun getTripWithDetails(id: Long): Trip {
 
             //            String selectQuery = "SELECT  * FROM " +
             //                    TABLE_TRIPS + "trips left join " +
@@ -163,19 +161,18 @@ internal class DataStore(context: Context) {
             return trip.copy(segments = getSegmentsForTripId(id))
         }
 
-        private fun getSegmentsForTripId(tripId: Long?): ArrayList<Segment> {
+        private fun getSegmentsForTripId(tripId: Long): ArrayList<Segment> {
             val db = this.readableDatabase
 
-            val selectQuery = ("SELECT  * FROM " + TABLE_TRIP_SEGMENTS + " WHERE "
-                    + COL_TRIP_ID + " = " + tripId)
+            val selectQuery = """SELECT  * FROM $TABLE_TRIP_SEGMENTS WHERE $COL_TRIP_ID = $tripId"""
 
-            val c = db.rawQuery(selectQuery, null)
+            val cursor = db.rawQuery(selectQuery, null)
 
 
             val result = ArrayList<Segment>()
-            if (c != null) {
-                while (c.moveToNext()) {
-                    val segment = createSegmentFromCursor(c)
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    val segment = createSegmentFromCursor(cursor)
                     val withSegmentPoints = segment.copy(segmentPoints = getSegmentPointsForSegmentId(segment.id))
                     result.add(withSegmentPoints)
                 }
@@ -187,11 +184,9 @@ internal class DataStore(context: Context) {
         private fun getSegmentPointsForSegmentId(segmentId: Long): ArrayList<SegmentPoint> {
             val db = this.readableDatabase
 
-            val selectQuery = ("SELECT  * FROM " + TABLE_SEGMENT_POINTS + " WHERE "
-                    + COL_TRIP_SEGMENT_ID + " = " + segmentId)
+            val selectQuery = """SELECT  * FROM $TABLE_SEGMENT_POINTS WHERE $COL_TRIP_SEGMENT_ID = $segmentId"""
 
             val c = db.rawQuery(selectQuery, null)
-
 
             val result = ArrayList<SegmentPoint>()
             if (c != null) {
@@ -204,31 +199,26 @@ internal class DataStore(context: Context) {
             return result
         }
 
-        private fun createTrackPointFromCursor(cursor: Cursor): SegmentPoint {
-            return SegmentPoint(
-                    cursor.getDouble(cursor.getColumnIndex(COL_LATITUDE)),
-                    cursor.getDouble(cursor.getColumnIndex(COL_LONGITUDE)),
-                    cursor.getDouble(cursor.getColumnIndex(COL_ACCURACY)),
-                    Date(cursor.getString(cursor.getColumnIndex(COL_TIMESTAMP))),
-                    cursor.getDouble(cursor.getColumnIndex(COL_ALTITUDE))
-            )
-        }
+        private fun createTrackPointFromCursor(cursor: Cursor) = SegmentPoint(
+            latitude = cursor.getDouble(cursor.getColumnIndex(COL_LATITUDE)),
+            longitude = cursor.getDouble(cursor.getColumnIndex(COL_LONGITUDE)),
+            accuracy = cursor.getDouble(cursor.getColumnIndex(COL_ACCURACY)),
+            dateTime = Date(cursor.getString(cursor.getColumnIndex(COL_TIMESTAMP))),
+            altitude = cursor.getDouble(cursor.getColumnIndex(COL_ALTITUDE))
+        )
 
-        private fun createSegmentFromCursor(c: Cursor): Segment {
-            return Segment(
-                    Date(c.getString(c.getColumnIndex(COL_SEGMENT_STARTED_TIMESTAMP))),
-                    c.getLong(c.getColumnIndex(COL_ID))
-            )
-        }
+        private fun createSegmentFromCursor(c: Cursor) = Segment(
+            startedTimestamp = Date(c.getString(c.getColumnIndex(COL_SEGMENT_STARTED_TIMESTAMP))),
+            id = c.getLong(c.getColumnIndex(COL_ID))
+        )
 
-        private fun createTripFromCursor(cursor: Cursor?): Trip {
-            return Trip(
-                    cursor!!.getString(cursor.getColumnIndex(COL_TRIP_NAME)),
-                    cursor.getLong(cursor.getColumnIndex(COL_ID))
-            )
-        }
 
-        // tables, fields
+        private fun createTripFromCursor(cursor: Cursor?) = Trip(
+            name = cursor!!.getString(cursor.getColumnIndex(COL_TRIP_NAME)),
+            id = cursor.getLong(cursor.getColumnIndex(COL_ID))
+        )
+
+
         private val TABLE_TRIPS = "trips"
         private val TABLE_TRIP_SEGMENTS = "trip_segments"
         private val TABLE_SEGMENT_POINTS = "segment_points"
@@ -248,29 +238,24 @@ internal class DataStore(context: Context) {
         private val COL_TIMESTAMP = "timestamp"
 
 
-        private val CREATE_TABLE_TRIPS = ("CREATE TABLE " + TABLE_TRIPS + "("
-                + COL_ID + " INTEGER PRIMARY KEY,"
-                + COL_TRIP_NAME + " TEXT "
-                + ")")
+        private val CREATE_TABLE_TRIPS = """CREATE TABLE $TABLE_TRIPS(
+            |$COL_ID INTEGER PRIMARY KEY,
+            |$COL_TRIP_NAME TEXT )"""
 
-        private val CREATE_TABLE_TRIP_SEGMENTS = ("CREATE TABLE " + TABLE_TRIP_SEGMENTS + "("
-                + COL_ID + " INTEGER PRIMARY KEY,"
-                + COL_TRIP_ID + " INTEGER," //FOREIGN KEY
+        private val CREATE_TABLE_TRIP_SEGMENTS = """CREATE TABLE $TABLE_TRIP_SEGMENTS (
+            |$COL_ID INTEGER PRIMARY KEY,
+            |$COL_TRIP_ID INTEGER,
+            |$COL_SEGMENT_STARTED_TIMESTAMP DATETIME,
+            |$COL_SEGMENT_STOPPED_TIMESTAMP DATETIME)"""
 
-                + COL_SEGMENT_STARTED_TIMESTAMP + " DATETIME,"
-                + COL_SEGMENT_STOPPED_TIMESTAMP + " DATETIME"
-                + ")")
-
-        private val CREATE_TABLE_SEGMENT_POINTS = ("CREATE TABLE "
-                + TABLE_SEGMENT_POINTS + "(" + COL_ID + " INTEGER PRIMARY KEY,"
-                + COL_TRIP_SEGMENT_ID + " INTEGER," //FOREIGN KEY
-
-                + COL_TIMESTAMP + " DATETIME,"
-                + COL_LATITUDE + " INTEGER,"
-                + COL_LONGITUDE + " INTEGER,"
-                + COL_ALTITUDE + " INTEGER,"
-                + COL_ACCURACY + " INTEGER"
-                + ")")
+        private val CREATE_TABLE_SEGMENT_POINTS = """CREATE TABLE $TABLE_SEGMENT_POINTS(
+            |$COL_ID INTEGER PRIMARY KEY,
+            |$COL_TRIP_SEGMENT_ID INTEGER,
+            |$COL_TIMESTAMP DATETIME,
+            |$COL_LATITUDE INTEGER,
+            |$COL_LONGITUDE INTEGER,
+            |$COL_ALTITUDE INTEGER,
+            |$COL_ACCURACY INTEGER)"""
 
     }
 }
