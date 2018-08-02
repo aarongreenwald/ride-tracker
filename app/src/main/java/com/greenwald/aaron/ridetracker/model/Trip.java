@@ -1,14 +1,14 @@
 package com.greenwald.aaron.ridetracker.model;
 
-import java.util.Date;
+import com.google.android.gms.maps.model.LatLng;
 
-/**
- * Created by aarong on 19/07/2018.
- */
+import java.io.Serializable;
+import java.util.ArrayList;
 
-public class Trip {
+public class Trip implements Serializable {
     private String name;
     private long id;
+    private ArrayList<Segment> segmentList = new ArrayList<>();
 
     public Trip(String name) {
         this.name = name;
@@ -29,5 +29,26 @@ public class Trip {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public ArrayList<LatLng> getAllLocations() {
+        ArrayList<LatLng> result = new ArrayList<>();
+        //I wish I was using scala right now....need to switch to Kotlin
+        for (Segment segment : segmentList)
+            for (SegmentPoint segmentPoint : segment.getSegmentPoints())
+                result.add(segmentPoint.getLatLng());
+
+        return result;
+    }
+
+    public void setSegments(ArrayList<Segment> segments) {
+        this.segmentList = segments;
+    }
+
+    public SegmentPoint getStartingPoint() {
+        if (!segmentList.isEmpty() && !segmentList.get(0).getSegmentPoints().isEmpty()) {
+            return segmentList.get(0).getSegmentPoints().get(0);
+        }
+        return null;
     }
 }

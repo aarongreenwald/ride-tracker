@@ -8,7 +8,12 @@ import android.location.LocationManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentPagerAdapter;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -32,12 +37,23 @@ public class TripActivity extends AppCompatActivity {
         }
 
         DataStore ds = new DataStore(getApplicationContext());
-        Trip trip = ds.getTrip(tripId);
+        Trip trip = ds.getTripWithDetails(tripId);
 
         setContentView(R.layout.activity_trip);
         Toolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setTitle(trip.getName());
         setSupportActionBar(toolbar);
+
+
+
+        ViewPager viewPager = findViewById(R.id.tripTabsViewPager);
+        TripActivityPagerAdapter pagerAdapter = new TripActivityPagerAdapter(super.getSupportFragmentManager(), trip);
+        viewPager.setAdapter(pagerAdapter);
+
+        TabLayout tabs = findViewById(R.id.tripTabsLayout);
+        tabs.setupWithViewPager(viewPager);
+        tabs.getTabAt(0).setText(R.string.stats);
+        tabs.getTabAt(1).setText(R.string.map);
 
 
         final FloatingActionButton fab = findViewById(R.id.playPauseButton);
@@ -110,5 +126,40 @@ public class TripActivity extends AppCompatActivity {
         return ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED;
     }
 
+    private class TripActivityPagerAdapter extends FragmentPagerAdapter {
+
+        private final Trip trip;
+
+        public TripActivityPagerAdapter(FragmentManager supportFragmentManager, Trip trip) {
+            super(supportFragmentManager);
+            this.trip = trip;
+        }
+
+        @Override
+        public int getCount() {
+            return 2;
+        }
+
+        @Override
+        public Fragment getItem(int i) {
+            Bundle bundle = new Bundle();
+            bundle.putSerializable("trip", this.trip);
+            switch (i) {
+                case 0: {
+                    Fragment fragment = StatsFragment.instantiate(getApplicationContext(), StatsFragment.class.getName());
+                    fragment.setArguments(bundle);
+                    return fragment;
+                }
+                case 1: {
+                    Fragment fragment = MapFragment.instantiate(getApplicationContext(), MapFragment.class.getName());
+                    fragment.setArguments(bundle);
+                    return fragment;
+                }
+
+                default: return null;
+            }
+        }
+
+    }
 }
 

@@ -9,7 +9,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.support.annotation.NonNull;
 
 import com.greenwald.aaron.ridetracker.model.Segment;
-import com.greenwald.aaron.ridetracker.model.TrackPoint;
+import com.greenwald.aaron.ridetracker.model.SegmentPoint;
 import com.greenwald.aaron.ridetracker.model.Trip;
 
 import java.time.Instant;
@@ -43,7 +43,7 @@ class DataStore {
         db.updateSegment(segment.getId(), Date.from(Instant.now()));
     }
 
-    void recordSegmentPoint(Segment segment, TrackPoint point) {
+    void recordSegmentPoint(Segment segment, SegmentPoint point) {
         //should the timestamp be set here, or does it come as part of the point?
         db.addSegmentPoint(segment, point);
     }
@@ -54,6 +54,10 @@ class DataStore {
 
     public Trip getTrip(Long id) {
         return db.getTrip(id);
+    }
+
+    public Trip getTripWithDetails(Long id){
+        return db.getTripWithDetails(id);
     }
 
     class DatabaseHelper extends SQLiteOpenHelper {
@@ -146,7 +150,7 @@ class DataStore {
             return db.insert(TABLE_TRIP_SEGMENTS, null, values);
         }
 
-        public long addSegmentPoint(Segment segment, TrackPoint point) {
+        public long addSegmentPoint(Segment segment, SegmentPoint point) {
             SQLiteDatabase db = this.getWritableDatabase();
 
             ContentValues values = new ContentValues();
@@ -201,6 +205,78 @@ class DataStore {
                 c.moveToFirst();
 
             return createTripFromCursor(c);
+        }
+
+        public Trip getTripWithDetails(Long id) {
+
+//            String selectQuery = "SELECT  * FROM " +
+//                    TABLE_TRIPS + "trips left join " +
+//                    TABLE_TRIP_SEGMENTS + "segments on trips." + COL_ID + " = segments." + COL_TRIP_ID + " left join " +
+//                    TABLE_SEGMENT_POINTS + "points on segments." + COL_ID + " = points." + COL_TRIP_SEGMENT_ID +
+//                    "WHERE trips." + COL_ID + " = " + id;
+
+            //this is a super dumb way to do this, but "whatever" for now
+            Trip trip = getTrip(id);
+            trip.setSegments(getSegmentsForTripId(id));
+            return trip;
+        }
+
+        private ArrayList<Segment> getSegmentsForTripId(Long tripId) {
+            SQLiteDatabase db = this.getReadableDatabase();
+
+            String selectQuery = "SELECT  * FROM " + TABLE_TRIP_SEGMENTS + " WHERE "
+                    + COL_TRIP_ID + " = " + tripId;
+
+            Cursor c = db.rawQuery(selectQuery, null);
+
+
+            ArrayList<Segment> result = new ArrayList<>();
+            if (c != null) {
+                while(c.moveToNext()) {
+                    Segment segment = createSegmentFromCursor(c);
+                    segment.setSegmentPoints(getSegmentPointsForSegmentId(segment.getId()));
+                    result.add(segment);
+                }
+            }
+
+            return result;
+        }
+
+        private ArrayList<SegmentPoint> getSegmentPointsForSegmentId(long segmentId) {
+            SQLiteDatabase db = this.getReadableDatabase();
+
+            String selectQuery = "SELECT  * FROM " + TABLE_SEGMENT_POINTS + " WHERE "
+                    + COL_TRIP_SEGMENT_ID + " = " + segmentId;
+
+            Cursor c = db.rawQuery(selectQuery, null);
+
+
+            ArrayList<SegmentPoint> result = new ArrayList<>();
+            if (c != null) {
+                while(c.moveToNext()) {
+                    SegmentPoint segmentPoint = createTrackPointFromCursor(c);
+                    result.add(segmentPoint);
+                }
+            }
+
+            return result;
+        }
+
+        private SegmentPoint createTrackPointFromCursor(Cursor cursor) {
+            return new SegmentPoint(
+                    cursor.getDouble(cursor.getColumnIndex(COL_LATITUDE)),
+                    cursor.getDouble(cursor.getColumnIndex(COL_LONGITUDE)),
+                    cursor.getDouble(cursor.getColumnIndex(COL_ACCURACY)),
+                    new Date(cursor.getString(cursor.getColumnIndex(COL_TIMESTAMP)))
+
+            );
+        }
+
+        private Segment createSegmentFromCursor(Cursor c) {
+            return new Segment(
+                    c.getLong(c.getColumnIndex(COL_ID)),
+                    new Date(c.getString(c.getColumnIndex(COL_SEGMENT_STARTED_TIMESTAMP)))
+            );
         }
 
         @NonNull

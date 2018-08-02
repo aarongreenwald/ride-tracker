@@ -13,7 +13,7 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.greenwald.aaron.ridetracker.model.Segment;
-import com.greenwald.aaron.ridetracker.model.TrackPoint;
+import com.greenwald.aaron.ridetracker.model.SegmentPoint;
 import com.greenwald.aaron.ridetracker.model.Trip;
 
 import java.time.Instant;
@@ -80,7 +80,7 @@ public class LocationTrackingService extends Service
 
         private final DataStore ds;
         private final Segment segment;
-        LinkedList<TrackPoint> track = new LinkedList<TrackPoint>();
+        LinkedList<SegmentPoint> track = new LinkedList<SegmentPoint>();
 
         public MyLocationListener(DataStore ds, Segment segment) {
             this.ds = ds;
@@ -89,12 +89,12 @@ public class LocationTrackingService extends Service
 
         public void onLocationChanged(final Location loc)
         {
-            TrackPoint trackPoint = new TrackPoint(loc.getLatitude(), loc.getLongitude(), loc.getAccuracy(), Date.from(Instant.now()));
-            track.add(trackPoint);
-            Log.i("AGGG", trackPoint.toString());
-            this.ds.recordSegmentPoint(this.segment, trackPoint);
+            SegmentPoint segmentPoint = new SegmentPoint(loc.getLatitude(), loc.getLongitude(), loc.getAccuracy(), Date.from(Instant.now()));
+            track.add(segmentPoint);
+            Log.i("AGGG", segmentPoint.toString());
+            this.ds.recordSegmentPoint(this.segment, segmentPoint);
             Intent intent = new Intent();
-            intent.putExtra("point", trackPoint.toString());
+            intent.putExtra("point", segmentPoint.toString());
             intent.setAction("LOCATION_CHANGED");
             sendBroadcast(intent);
         }

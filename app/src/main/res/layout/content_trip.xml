@@ -8,10 +8,21 @@
     tools:context=".TripActivity"
     tools:showIn="@layout/activity_trip">
 
-    <fragment android:name="com.greenwald.aaron.ridetracker.MapFragment"
-        android:id="@+id/mapFragment"
-        android:layout_weight="1"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <android.support.design.widget.TabLayout
+            android:id="@+id/tripTabsLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <android.support.v4.view.ViewPager
+            android:id="@+id/tripTabsViewPager"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </LinearLayout>
 
 </android.support.constraint.ConstraintLayout>

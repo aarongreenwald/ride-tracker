@@ -3,7 +3,6 @@ package com.greenwald.aaron.ridetracker;
 //https://gist.github.com/joshdholtz/4522551
 
 import android.Manifest;
-import android.app.Fragment;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -12,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -23,8 +23,12 @@ import com.google.android.gms.maps.MapsInitializer;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.JointType;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.PolylineOptions;
-import com.greenwald.aaron.ridetracker.model.TrackPoint;
+import com.greenwald.aaron.ridetracker.model.SegmentPoint;
+import com.greenwald.aaron.ridetracker.model.Trip;
+
+import java.util.ArrayList;
 
 public class MapFragment extends Fragment {
 
@@ -32,7 +36,6 @@ public class MapFragment extends Fragment {
     GoogleMap map;
     private IntentFilter intentFilter = new IntentFilter();
     PolylineOptions polylineOptions = new PolylineOptions();
-
 
     @Override
     public void onResume() {
@@ -46,19 +49,19 @@ public class MapFragment extends Fragment {
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals("LOCATION_CHANGED")) {
                 String point = intent.getStringExtra("point");
-                TrackPoint location = TrackPoint.fromString(point);
+                SegmentPoint location = SegmentPoint.fromString(point);
                 addPointToMap(location);
                 focusOnLocation(location);
             }
         }
     };
 
-    private void addPointToMap(TrackPoint location) {
+    private void addPointToMap(SegmentPoint location) {
         polylineOptions.add(location.getLatLng());
         map.addPolyline(polylineOptions);
     }
 
-    private void focusOnLocation(TrackPoint location) {
+    private void focusOnLocation(SegmentPoint location) {
         CameraPosition camPos = new CameraPosition.Builder()
                 .target(location.getLatLng())
                 .zoom(15)
@@ -78,6 +81,11 @@ public class MapFragment extends Fragment {
         polylineOptions.jointType(JointType.ROUND);
         intentFilter.addAction("LOCATION_CHANGED");
 
+        final Trip trip = (Trip)getArguments().getSerializable("trip");
+        ArrayList<LatLng> locations = trip.getAllLocations();
+        polylineOptions.addAll(locations);
+
+
         View view = inflater.inflate(R.layout.fragment_map, container, false);
         mapView = view.findViewById(R.id.mapView);
         mapView.onCreate(savedInstanceState);
@@ -95,6 +103,11 @@ public class MapFragment extends Fragment {
                 map.setMyLocationEnabled(true);
                 map.getUiSettings().setAllGesturesEnabled(true);
                 map.getUiSettings().setMyLocationButtonEnabled(true);
+                map.addPolyline(polylineOptions);
+                SegmentPoint startingPoint = trip.getStartingPoint();
+                if (startingPoint != null) {
+                    focusOnLocation(startingPoint);
+                }
             }
         });
 
@@ -102,6 +115,7 @@ public class MapFragment extends Fragment {
         MapsInitializer.initialize(this.getActivity());
         return view;
     }
+
 
 
 
