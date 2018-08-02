@@ -12,6 +12,10 @@ import com.greenwald.aaron.ridetracker.model.Trip
 import java.time.Instant
 import java.util.*
 
+
+private val DATABASE_VERSION = 1
+private val DATABASE_NAME = "ride-tracker"
+
 internal class DataStore(context: Context) {
 
     private val db: DatabaseHelper
@@ -26,16 +30,13 @@ internal class DataStore(context: Context) {
     fun createTrip(name: String): Trip {
         val trip = Trip(name)
         val id = db.addTrip(trip)
-        trip.setId(id)
-        return trip
-
+        return trip.copy(id = id)
     }
 
     fun startTripSegment(trip: Trip): Segment {
         val segment = Segment(Date.from(Instant.now()))
         val id = db.addSegment(trip, segment)
-        segment.setId(id)
-        return segment
+        return segment.copy(id = id)
     }
 
     fun stopTripSegment(segment: Segment) {
@@ -55,8 +56,6 @@ internal class DataStore(context: Context) {
         return db.getTripWithDetails(id)
     }
 
-    private val DATABASE_VERSION = 1
-    private val DATABASE_NAME = "ride-tracker"
 
     internal inner class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
@@ -109,7 +108,7 @@ internal class DataStore(context: Context) {
 
             val values = ContentValues()
             values.put(COL_TRIP_ID, trip.id)
-            values.put(COL_SEGMENT_STARTED_TIMESTAMP, segment.startedTimestamp!!.toString())
+            values.put(COL_SEGMENT_STARTED_TIMESTAMP, segment.startedTimestamp.toString())
 
             return db.insert(TABLE_TRIP_SEGMENTS, null, values)
         }
@@ -161,8 +160,7 @@ internal class DataStore(context: Context) {
 
             //this is a super dumb way to do this, but "whatever" for now
             val trip = getTrip(id)
-            trip.setSegments(getSegmentsForTripId(id))
-            return trip
+            return trip.copy(segments = getSegmentsForTripId(id))
         }
 
         private fun getSegmentsForTripId(tripId: Long?): ArrayList<Segment> {
@@ -178,8 +176,8 @@ internal class DataStore(context: Context) {
             if (c != null) {
                 while (c.moveToNext()) {
                     val segment = createSegmentFromCursor(c)
-                    segment.segmentPoints = getSegmentPointsForSegmentId(segment.id)
-                    result.add(segment)
+                    val withSegmentPoints = segment.copy(segmentPoints = getSegmentPointsForSegmentId(segment.id))
+                    result.add(withSegmentPoints)
                 }
             }
 
@@ -218,15 +216,15 @@ internal class DataStore(context: Context) {
 
         private fun createSegmentFromCursor(c: Cursor): Segment {
             return Segment(
-                    c.getLong(c.getColumnIndex(COL_ID)),
-                    Date(c.getString(c.getColumnIndex(COL_SEGMENT_STARTED_TIMESTAMP)))
+                    Date(c.getString(c.getColumnIndex(COL_SEGMENT_STARTED_TIMESTAMP))),
+                    c.getLong(c.getColumnIndex(COL_ID))
             )
         }
 
         private fun createTripFromCursor(cursor: Cursor?): Trip {
             return Trip(
-                    cursor!!.getLong(cursor.getColumnIndex(COL_ID)),
-                    cursor.getString(cursor.getColumnIndex(COL_TRIP_NAME))
+                    cursor!!.getString(cursor.getColumnIndex(COL_TRIP_NAME)),
+                    cursor.getLong(cursor.getColumnIndex(COL_ID))
             )
         }
 

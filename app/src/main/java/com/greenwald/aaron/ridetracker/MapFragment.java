@@ -29,6 +29,7 @@ import com.greenwald.aaron.ridetracker.model.SegmentPoint;
 import com.greenwald.aaron.ridetracker.model.Trip;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class MapFragment extends Fragment {
 
@@ -82,7 +83,7 @@ public class MapFragment extends Fragment {
         intentFilter.addAction("LOCATION_CHANGED");
 
         final Trip trip = (Trip)getArguments().getSerializable("trip");
-        ArrayList<LatLng> locations = trip.getAllLocations();
+        List<LatLng> locations = trip.getAllLocations();
         polylineOptions.addAll(locations);
 
 

@@ -5,42 +5,14 @@ import com.google.android.gms.maps.model.LatLng
 import java.io.Serializable
 import java.util.ArrayList
 
-class Trip : Serializable {
-    var name: String? = null
-        private set
-    var id: Long = 0
-        private set
-    private var segmentList = ArrayList<Segment>()
+data class Trip (val name: String,
+                 val id: Long = 0,
+                 val segments: List<Segment> = emptyList()) : Serializable {
 
-    val allLocations: ArrayList<LatLng>
-        get() {
-            val result = ArrayList<LatLng>()
-            for (segment in segmentList)
-                for (segmentPoint in segment.segmentPoints)
-                    result.add(segmentPoint.latLng)
-
-            return result
-        }
+    fun getAllLocations(): List<LatLng> =
+            segments.flatMap({segment -> segment.segmentPoints.map(SegmentPoint::latLng) })
 
     val startingPoint: SegmentPoint?
-        get() = if (!segmentList.isEmpty() && !segmentList[0].segmentPoints.isEmpty()) {
-            segmentList[0].segmentPoints[0]
-        } else null
+        get() = segments.getOrNull(0)?.segmentPoints?.getOrNull(0)
 
-    constructor(name: String) {
-        this.name = name
-    }
-
-    constructor(id: Long, name: String) {
-        this.id = id
-        this.name = name
-    }
-
-    fun setId(id: Long?) {
-        this.id = id!!
-    }
-
-    fun setSegments(segments: ArrayList<Segment>) {
-        this.segmentList = segments
-    }
 }
