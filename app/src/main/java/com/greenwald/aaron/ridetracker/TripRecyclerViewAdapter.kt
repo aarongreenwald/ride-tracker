@@ -1,5 +1,6 @@
 package com.greenwald.aaron.ridetracker
 
+import android.graphics.Color
 import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
@@ -19,6 +20,13 @@ class TripRecyclerViewAdapter internal constructor(private val trips: List<Trip>
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.trip = trips[position]
+
+        if (LocationTrackingService.recordingTripId == holder.trip!!.id) {
+            holder.nameTextView.setTextColor(Color.GREEN)
+            holder.distanceTextView.setTextColor(Color.GREEN)
+        }
+
+
         holder.nameTextView.text = trips[position].name
         holder.distanceTextView.text = trips[position].distance.toString()
 
