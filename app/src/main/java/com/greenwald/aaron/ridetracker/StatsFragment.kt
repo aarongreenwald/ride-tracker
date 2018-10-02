@@ -28,10 +28,10 @@ class StatsFragment : Fragment() {
         val trip = arguments!!.getSerializable("trip") as Trip
 
         val stats = view.findViewById<LinearLayout>(R.id.stats)
-        stats.addView(createSingleStat(R.string.trip_distance, "${trip.distance} km"))
-        stats.addView(createSingleStat(R.string.riding_time, "04:32"))
-        stats.addView(createSingleStat(R.string.stop_time, "04:32"))
-        stats.addView(createSingleStat(R.string.total_time, "08:34"))
+        stats.addView(createSingleStat(R.string.trip_distance, trip.distance.toString()))
+        stats.addView(createSingleStat(R.string.riding_time, trip.ridingTime.toString()))
+//        stats.addView(createSingleStat(R.string.stop_time, "04:32"))
+        stats.addView(createSingleStat(R.string.total_time, trip.elapsedTime.toString()))
         ///////////
         stats.addView(createSingleStat(R.string.max_segment_time, "01:23"))
         stats.addView(createSingleStat(R.string.max_segment_distance, "100.5 km"))
