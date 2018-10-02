@@ -23,64 +23,66 @@ import com.google.android.gms.maps.MapsInitializer
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.JointType
-import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.PolylineOptions
 import com.greenwald.aaron.ridetracker.model.SegmentPoint
 import com.greenwald.aaron.ridetracker.model.Trip
 
-import java.util.ArrayList
-
 class MapFragment : Fragment() {
 
-    internal lateinit var mapView: MapView
-    internal lateinit var map: GoogleMap
+    private lateinit var mapView: MapView
+    private lateinit var map: GoogleMap
     private val intentFilter = IntentFilter()
-    internal var polylineOptions = PolylineOptions()
+//    private var polylineOptions = PolylineOptions()
 
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == "LOCATION_CHANGED") {
-                val point = intent.getStringExtra("point")
-                val location = SegmentPoint.fromString(point)
-                addPointToMap(location)
-                focusOnLocation(location)
-            }
-        }
-    }
+//    private val receiver = object : BroadcastReceiver() {
+//        override fun onReceive(context: Context, intent: Intent) {
+//            if (intent.action == "LOCATION_CHANGED") {
+//                val point = intent.getStringExtra("point")
+//                val location = SegmentPoint.fromString(point)
+//                addPointToMap(location)
+//                focusOnLocation(location)
+//            }
+//        }
+//    }
 
     override fun onResume() {
         super.onResume()
         mapView.onResume()
-        context!!.registerReceiver(receiver, intentFilter)
+//        context!!.registerReceiver(receiver, intentFilter)
     }
 
-    private fun addPointToMap(location: SegmentPoint) {
-        polylineOptions.add(location.latLng)
-        map.addPolyline(polylineOptions)
-    }
+//    private fun addPointToMap(location: SegmentPoint) {
+//        polylineOptions.add(location.latLng)
+//        map.addPolyline(polylineOptions)
+//    }
 
-    private fun focusOnLocation(location: SegmentPoint?) {
-        val camPos = CameraPosition.Builder()
-                .target(location!!.latLng)
-                .zoom(15f)
-                .build()
-        map.animateCamera(CameraUpdateFactory.newCameraPosition(camPos))
-    }
+//    private fun focusOnLocation(location: SegmentPoint?) {
+//        val camPos = CameraPosition.Builder()
+//                .target(location!!.latLng)
+//                .zoom(15f)
+//                .build()
+//        map.animateCamera(CameraUpdateFactory.newCameraPosition(camPos))
+//    }
 
     override fun onPause() {
-        context!!.unregisterReceiver(receiver)
+//        context!!.unregisterReceiver(receiver)
         super.onPause()
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        polylineOptions.color(Color.RED)
-        polylineOptions.jointType(JointType.ROUND)
         intentFilter.addAction("LOCATION_CHANGED")
 
         val trip = arguments!!.getSerializable("trip") as Trip
-        val locations = trip.getAllLocations()
-        polylineOptions.addAll(locations)
 
+        val polylines: List<PolylineOptions> = trip.segments.map { segment ->
+            val locations = segment.segmentPoints.map(SegmentPoint::latLng)
+            val polyline = PolylineOptions()
+            polyline.color(Color.RED)
+            polyline.jointType(JointType.ROUND)
+            polyline.addAll(locations)
+            polyline
+        }
 
         val view = inflater.inflate(R.layout.fragment_map, container, false)
         mapView = view.findViewById(R.id.mapView)
@@ -95,11 +97,16 @@ class MapFragment : Fragment() {
             }
             map.isMyLocationEnabled = true
             map.uiSettings.setAllGesturesEnabled(true)
+            map.uiSettings.isZoomControlsEnabled = true
             map.uiSettings.isMyLocationButtonEnabled = true
-            map.addPolyline(polylineOptions)
-            val startingPoint = trip.startingPoint
-            if (startingPoint != null) {
-                focusOnLocation(startingPoint)
+
+            polylines.forEach { polyline -> map.addPolyline(polyline) }
+
+            val builder = LatLngBounds.builder()
+            val locations = trip.getAllLocations()
+            if (locations.isNotEmpty()) {
+                locations.forEach { latLng -> builder.include(latLng) }
+                map.moveCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 200))
             }
         })
 
