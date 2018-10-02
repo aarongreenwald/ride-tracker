@@ -7,6 +7,7 @@ import java.util.ArrayList
 
 data class Trip (val name: String,
                  val id: Long = 0,
+                 val distance: Kilometers = 0,
                  val segments: List<Segment> = emptyList()) : Serializable {
 
     fun getAllLocations(): List<LatLng> =

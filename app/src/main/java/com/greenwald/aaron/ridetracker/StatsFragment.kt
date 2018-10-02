@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.greenwald.aaron.ridetracker.model.Trip
 
 
 class StatsFragment : Fragment() {
@@ -24,8 +25,10 @@ class StatsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        val trip = arguments!!.getSerializable("trip") as Trip
+
         val stats = view.findViewById<LinearLayout>(R.id.stats)
-        stats.addView(createSingleStat(R.string.trip_distance, "430.5 km"))
+        stats.addView(createSingleStat(R.string.trip_distance, "${trip.distance} km"))
         stats.addView(createSingleStat(R.string.riding_time, "04:32"))
         stats.addView(createSingleStat(R.string.stop_time, "04:32"))
         stats.addView(createSingleStat(R.string.total_time, "08:34"))
