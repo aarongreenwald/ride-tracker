@@ -19,27 +19,23 @@ class TripRecyclerViewAdapter internal constructor(private val trips: List<Trip>
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.trip = trips[position]
-        holder.textView.text = trips[position].name
+        holder.nameTextView.text = trips[position].name
+        holder.distanceTextView.text = trips[position].distance.toString()
 
         holder.view.setOnClickListener {
             interactionListener?.onListFragmentInteraction(holder.trip!!)
         }
     }
 
-    override fun getItemCount(): Int {
-        return trips.size
-    }
+    override fun getItemCount() = trips.size
 
     inner class ViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
-        val textView: TextView
+        val nameTextView: TextView = view.findViewById(R.id.tripName)
+        val distanceTextView: TextView = view.findViewById(R.id.tripDistance)
         var trip: Trip? = null
 
-        init {
-            textView = view.findViewById(R.id.tripName)
-        }
-
         override fun toString(): String {
-            return super.toString() + " '" + textView.text + "'"
+            return "${super.toString()} '${nameTextView.text}'"
         }
     }
 }

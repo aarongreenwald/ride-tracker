@@ -9,9 +9,12 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.ArraySet;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.greenwald.aaron.ridetracker.model.Meters;
+import com.greenwald.aaron.ridetracker.model.Milliseconds;
 import com.greenwald.aaron.ridetracker.model.Segment;
 import com.greenwald.aaron.ridetracker.model.SegmentPoint;
 import com.greenwald.aaron.ridetracker.model.Trip;
@@ -34,14 +37,12 @@ public class LocationTrackingService extends Service
     public void onStart(Intent intent, int startId)
     {
         this.ds = new DataStore(getApplicationContext());
-        //For now every segment is a new trip
-        Trip trip = ds.createTrip("Some Trip");
 
         Long tripId = intent.getLongExtra("tripId", -1);
         if (tripId == -1) {
             throw new RuntimeException("Cannot track location without a valid tripId");
         }
-        trip = ds.getTrip(tripId);
+        Trip trip = ds.getTrip(tripId);
 
         this.segment = ds.startTripSegment(trip);
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -80,23 +81,35 @@ public class LocationTrackingService extends Service
 
         private final DataStore ds;
         private final Segment segment;
-        LinkedList<SegmentPoint> track = new LinkedList<SegmentPoint>();
+        private SegmentPoint previousLocation;
 
-        public MyLocationListener(DataStore ds, Segment segment) {
+        MyLocationListener(DataStore ds, Segment segment) {
             this.ds = ds;
             this.segment = segment;
         }
 
         public void onLocationChanged(final Location loc)
         {
+            float[] results = new float[3];
+            if (this.previousLocation != null) {
+                Location.distanceBetween(this.previousLocation.getLatitude(), this.previousLocation.getLongitude(), loc.getLatitude(), loc.getLongitude(), results);
+            }
+            Instant now = Instant.now();
+            long altitudeChange = this.previousLocation != null ? (long) (loc.getAltitude() - this.previousLocation.getAltitude()) : 0;
+            Milliseconds elapsedTime = this.previousLocation != null ? new Milliseconds(now.toEpochMilli() - this.previousLocation.getDateTime().toInstant().toEpochMilli()) : new Milliseconds(0);
+
             SegmentPoint segmentPoint = new SegmentPoint(loc.getLatitude(),
-                    loc.getLongitude(),
-                    loc.getAccuracy(),
-                    Date.from(Instant.now()),
-                    loc.getAltitude()
+                loc.getLongitude(),
+                loc.getAccuracy(),
+                Date.from(now),
+                loc.getAltitude(),
+                new Meters(altitudeChange),
+                elapsedTime,
+                new Meters(results[0])
             );
-            track.add(segmentPoint);
+
             Log.i("AGGG", segmentPoint.toString());
+            this.previousLocation = segmentPoint;
             this.ds.recordSegmentPoint(this.segment, segmentPoint);
             Intent intent = new Intent();
             intent.putExtra("point", segmentPoint.toString());

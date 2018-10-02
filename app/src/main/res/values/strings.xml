@@ -18,4 +18,6 @@
     <string name="min_altitude">Min Altitude</string>
     <string name="total_ascent">Total Ascent</string>
     <string name="total_descent">Total Descent</string>
+    <string name="avg_riding_speed">Avg Riding Speed</string>
+    <string name="max_speed">Top Speed</string>
 </resources>

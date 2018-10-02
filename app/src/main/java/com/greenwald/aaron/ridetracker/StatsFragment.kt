@@ -30,21 +30,21 @@ class StatsFragment : Fragment() {
         val stats = view.findViewById<LinearLayout>(R.id.stats)
         stats.addView(createSingleStat(R.string.trip_distance, trip.distance.toString()))
         stats.addView(createSingleStat(R.string.riding_time, trip.ridingTime.toString()))
-//        stats.addView(createSingleStat(R.string.stop_time, "04:32"))
-        stats.addView(createSingleStat(R.string.total_time, trip.elapsedTime.toString()))
+        stats.addView(createSingleStat(R.string.avg_riding_speed, trip.averageRidingSpeed.toString()))
+        stats.addView(createSingleStat(R.string.max_speed, trip.maxSpeed.toString()))
         ///////////
-        stats.addView(createSingleStat(R.string.max_segment_time, "01:23"))
-        stats.addView(createSingleStat(R.string.max_segment_distance, "100.5 km"))
-
-        //////////
-        stats.addView(createSingleStat(R.string.max_slope, "10deg"))
-        stats.addView(createSingleStat(R.string.min_slope, "-3deg"))
-        stats.addView(createSingleStat(R.string.max_altitude, "2000m"))
-        stats.addView(createSingleStat(R.string.min_altitude, "-100m"))
-        stats.addView(createSingleStat(R.string.altitude_range, "1800m")) //calc at display timef
-        stats.addView(createSingleStat(R.string.total_ascent, "4000m"))
-        stats.addView(createSingleStat(R.string.total_descent, "-3000m"))
-
+//        stats.addView(createSingleStat(R.string.max_segment_time, "01:23"))
+//        stats.addView(createSingleStat(R.string.max_segment_distance, "100.5 km"))
+//
+//        //////////
+//        stats.addView(createSingleStat(R.string.max_slope, "10deg"))
+//        stats.addView(createSingleStat(R.string.min_slope, "-3deg"))
+        stats.addView(createSingleStat(R.string.max_altitude, trip.maxAltitude.toString()))
+        stats.addView(createSingleStat(R.string.min_altitude, trip.minAltitude.toString()))
+        stats.addView(createSingleStat(R.string.altitude_range, trip.altitudeRange.toString()))
+//        stats.addView(createSingleStat(R.string.total_ascent, "4000m"))
+//        stats.addView(createSingleStat(R.string.total_descent, "-3000m"))
+//
 
     }
 

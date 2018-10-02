@@ -9,7 +9,10 @@ data class SegmentPoint(val latitude: Double,
                         val longitude: Double,
                         val accuracy: Double,
                         val dateTime: Date,
-                        val altitude: Double) {
+                        val altitude: Double,
+                        val altitudeChange: Meters = Meters(0.0),
+                        val elapsedTime: Milliseconds = Milliseconds(0),
+                        val distance: Meters = Meters(0.0)) {
 
     val latLng: LatLng
         get() = LatLng(this.latitude, this.longitude)

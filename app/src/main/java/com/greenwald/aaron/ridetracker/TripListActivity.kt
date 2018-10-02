@@ -10,6 +10,7 @@ import android.text.InputType
 import android.widget.EditText
 
 import com.greenwald.aaron.ridetracker.model.Trip
+import java.text.SimpleDateFormat
 
 import java.time.Instant
 import java.util.Date
@@ -32,7 +33,7 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
 
         val input = EditText(applicationContext)
 
-        input.setText(Date.from(Instant.now()).toString())
+        input.setText(SimpleDateFormat("yyyy-MM-dd").format(Date()))
         input.inputType = InputType.TYPE_CLASS_TEXT
         builder.setView(input)
 
