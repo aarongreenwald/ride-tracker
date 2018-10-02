@@ -15,6 +15,15 @@ import java.util.*
 
 private val DATABASE_VERSION = 1
 private val DATABASE_NAME = "ride-tracker"
+private typealias KilometersPerHour = Long
+private typealias Meters = Long
+private typealias Milliseconds = Long
+private typealias Degrees = Long
+private typealias TripId = Long
+private typealias SegmentId = Long
+private typealias SegmentPointId = Long
+
+private val MILLISECONDS_PER_HOUR = 1000 * 60 * 60
 
 internal class DataStore(context: Context) {
 
@@ -41,18 +50,20 @@ internal class DataStore(context: Context) {
 
     fun stopTripSegment(segment: Segment) {
         db.updateSegment(segment.id, Date.from(Instant.now()))
+        db.insertSegmentStats(segment.id)
     }
 
     fun recordSegmentPoint(segment: Segment, point: SegmentPoint) {
         //should the timestamp be set here, or does it come as part of the point?
         db.addSegmentPoint(segment, point)
+        //TODO segment point stats
     }
 
-    fun getTrip(id: Long): Trip {
+    fun getTrip(id: TripId): Trip {
         return db.getTrip(id)
     }
 
-    fun getTripWithDetails(id: Long): Trip {
+    fun getTripWithDetails(id: TripId): Trip {
         return db.getTripWithDetails(id)
     }
 
@@ -102,7 +113,7 @@ internal class DataStore(context: Context) {
             onCreate(db)
         }
 
-        fun addTrip(trip: Trip): Long {
+        fun addTrip(trip: Trip): TripId {
             val db = this.writableDatabase
 
             val values = ContentValues()
@@ -111,7 +122,7 @@ internal class DataStore(context: Context) {
 
         }
 
-        fun addSegment(trip: Trip, segment: Segment): Long {
+        fun addSegment(trip: Trip, segment: Segment): SegmentId {
             val db = this.writableDatabase
 
             val values = ContentValues()
@@ -121,7 +132,7 @@ internal class DataStore(context: Context) {
             return db.insert(TABLE_TRIP_SEGMENTS, null, values)
         }
 
-        fun addSegmentPoint(segment: Segment, point: SegmentPoint): Long {
+        fun addSegmentPoint(segment: Segment, point: SegmentPoint): SegmentPointId {
             val db = this.writableDatabase
 
             val values = ContentValues()
@@ -135,7 +146,7 @@ internal class DataStore(context: Context) {
             return db.insert(TABLE_SEGMENT_POINTS, null, values)
         }
 
-        fun updateSegment(id: Long, stoppedTimestamp: Date) {
+        fun updateSegment(id: SegmentId, stoppedTimestamp: Date) {
             val db = this.writableDatabase
 
             val values = ContentValues()
@@ -145,18 +156,20 @@ internal class DataStore(context: Context) {
                     arrayOf(id.toString()))
         }
 
-        private fun updateSegmentPointStats(id: Long, distance: Long, elapsedTime: Long, altitudeChange: Long) {
+        private fun insertSegmentPointStats(id: SegmentPointId, distance: Meters, elapsedTime: Milliseconds, altitudeChange: Meters) {
             val db = this.writableDatabase
             val values = ContentValues()
             values.put(COL_SEGMENT_POINT_ID, id.toString())
-            values.put(COL_DISTANCE, id.toString())
-            values.put(COL_ELAPSED_TIME, id.toString())
-            values.put(COL_SPEED, calculateSpeed(distance.toString(), elapsedTime.toString()))
-            values.put(COL_ALTITUDE_CHANGE, altitudeChange.toString())
-            values.put(COL_SLOPE, calculateSlope(altitudeChange.toString(), distance.toString()))
+            values.put(COL_DISTANCE, distance)
+            values.put(COL_ELAPSED_TIME, elapsedTime)
+            values.put(COL_SPEED, calculateSpeed(distance, elapsedTime))
+            values.put(COL_ALTITUDE_CHANGE, altitudeChange)
+            values.put(COL_SLOPE, calculateSlope(altitudeChange, distance))
+
+            db.insert(TABLE_STATS_SEGMENT_POINTS, null, values)
         }
 
-        private fun updateSegmentStats(id: Long) {
+        fun insertSegmentStats(id: SegmentId) {
 
             val db = this.writableDatabase
 
@@ -182,17 +195,19 @@ internal class DataStore(context: Context) {
             values.put(COL_ELAPSED_TIME, c.getString(1))
             values.put(COL_MIN_ALTITUDE, c.getString(2))
             values.put(COL_MAX_ALTITUDE, c.getString(3))
-            values.put(COL_SPEED, calculateSpeed(c.getString(0), c.getString(1)))
+            values.put(COL_SPEED, calculateSpeed(c.getString(0).toLong(), c.getString(1).toLong()))
             values.put(COL_MIN_SLOPE, c.getString(4))
             values.put(COL_MAX_SLOPE, c.getString(5))
             values.put(COL_TOTAL_ASCENT, c.getString(6))
             values.put(COL_TOTAL_DESCENT, c.getString(7))
 
-            //delete if already exists?? or jjust add a unique constraint on the table's FK
             db.insert(TABLE_STATS_TRIP_SEGMENTS, null, values)
+            updateTripStatsForSegment(id)
         }
 
-        private fun updateTripStats(id: Long) {
+        private fun updateTripStatsForSegment(id: SegmentId) {
+
+            deleteTripStatsForSegment(id)
 
             val db = this.writableDatabase
 
@@ -206,7 +221,7 @@ internal class DataStore(context: Context) {
                 |SUM($COL_TOTAL_ASCENT),
                 |SUM($COL_TOTAL_DESCENT),
                 |MAX($COL_DISTANCE),
-                |MAX($COL_ELAPSED_TIME)
+                |MAX($COL_ELAPSED_TIME),
                 |FROM $TABLE_STATS_TRIP_SEGMENTS WHERE $COL_TRIP_SEGMENT_ID IN
                     |(SELECT $COL_TRIP_SEGMENT_ID FROM $TABLE_STATS_TRIP_SEGMENTS WHERE $COL_TRIP_ID = $id)""".trimMargin()
 
@@ -218,12 +233,11 @@ internal class DataStore(context: Context) {
 
             values.put(COL_DISTANCE, c.getString(0))
 //            values.put(COL_ELAPSED_TIME, c.getString(1))
-//            values.put(COL_STOPPED_TIME, c.getString(1))
             values.put(COL_RIDE_TIME, c.getString(1))
             values.put(COL_RIDE_TIME, c.getString(1))
             values.put(COL_MIN_ALTITUDE, c.getString(2))
             values.put(COL_MAX_ALTITUDE, c.getString(3))
-            values.put(COL_SPEED, calculateSpeed(c.getString(0), c.getString(1)))
+            values.put(COL_SPEED, calculateSpeed(c.getLong(0), c.getLong(1)))
             values.put(COL_MIN_SLOPE, c.getString(4))
             values.put(COL_MAX_SLOPE, c.getString(5))
             values.put(COL_TOTAL_ASCENT, c.getString(6))
@@ -231,11 +245,17 @@ internal class DataStore(context: Context) {
             values.put(COL_MAX_TRIP_SEGMENT_DISTANCE, c.getString(8))
             values.put(COL_MAX_TRIP_SEGMENT_ELAPSED_TIME, c.getString(9))
 
-            //delete if already exists?? or jjust add a unique constraint on the table's FK
             db.insert(TABLE_STATS_TRIPS, null, values)
         }
 
-        fun getTrip(id: Long): Trip {
+        private fun deleteTripStatsForSegment(id: SegmentId) {
+            val db = db.writableDatabase
+            val where = """$COL_TRIP_ID IN
+                |(SELECT $COL_TRIP_ID FROM $TABLE_TRIP_SEGMENTS WHERE $COL_ID = ?) """.trimMargin()
+            db.delete(TABLE_STATS_TRIPS, where, arrayOf(id.toString()))
+        }
+
+        fun getTrip(id: TripId): Trip {
             val db = this.readableDatabase
 
             val selectQuery = """SELECT  * FROM $TABLE_TRIPS WHERE $COL_ID = $id"""
@@ -247,7 +267,7 @@ internal class DataStore(context: Context) {
             return createTripFromCursor(c)
         }
 
-        fun getTripWithDetails(id: Long): Trip {
+        fun getTripWithDetails(id: TripId): Trip {
 
             //            String selectQuery = "SELECT  * FROM " +
             //                    TABLE_TRIPS + "trips left join " +
@@ -260,7 +280,7 @@ internal class DataStore(context: Context) {
             return trip.copy(segments = getSegmentsForTripId(id))
         }
 
-        private fun getSegmentsForTripId(tripId: Long): ArrayList<Segment> {
+        private fun getSegmentsForTripId(tripId: TripId): ArrayList<Segment> {
             val db = this.readableDatabase
 
             val selectQuery = """SELECT  * FROM $TABLE_TRIP_SEGMENTS WHERE $COL_TRIP_ID = $tripId"""
@@ -280,7 +300,7 @@ internal class DataStore(context: Context) {
             return result
         }
 
-        private fun getSegmentPointsForSegmentId(segmentId: Long): ArrayList<SegmentPoint> {
+        private fun getSegmentPointsForSegmentId(segmentId: SegmentId): ArrayList<SegmentPoint> {
             val db = this.readableDatabase
 
             val selectQuery = """SELECT  * FROM $TABLE_SEGMENT_POINTS WHERE $COL_TRIP_SEGMENT_ID = $segmentId"""
@@ -340,11 +360,11 @@ internal class DataStore(context: Context) {
         private val COL_TIMESTAMP = "timestamp"
 
         private val COL_SEGMENT_POINT_ID = "segment_point_id"
-        private val COL_DISTANCE = "distance" //meters
-        private val COL_ELAPSED_TIME = "elapsed_time" //milliseconds
-        private val COL_ALTITUDE_CHANGE = "altitude_change" //meters
-        private val COL_SLOPE = "slope" //degrees = altitude_change / distance <---do I need this?
-        private val COL_SPEED = "speed" //km/h
+        private val COL_DISTANCE = "distance"
+        private val COL_ELAPSED_TIME = "elapsed_time"
+        private val COL_ALTITUDE_CHANGE = "altitude_change"
+        private val COL_SLOPE = "slope"
+        private val COL_SPEED = "speed"
 
         private val COL_MIN_ALTITUDE = "min_altitude"
         private val COL_MAX_ALTITUDE = "max_altitude"
@@ -353,7 +373,6 @@ internal class DataStore(context: Context) {
         private val COL_TOTAL_ASCENT = "total_ascent"
         private val COL_TOTAL_DESCENT = "total_descent"
 
-        private val COL_STOPPED_TIME = "stopped_time"
         private val COL_RIDE_TIME = "ride_time"
         private val COL_MAX_TRIP_SEGMENT_DISTANCE = "max_trip_segment_distance"
         private val COL_MAX_TRIP_SEGMENT_ELAPSED_TIME = "max_trip_segment_elapsed_time"
@@ -379,7 +398,7 @@ internal class DataStore(context: Context) {
             |$COL_ACCURACY INTEGER)"""
 
         private val CREATE_TABLE_STATS_SEGMENT_POINTS = """CREATE TABLE $TABLE_STATS_SEGMENT_POINTS(
-            |$COL_SEGMENT_POINT_ID INTEGER,
+            |$COL_SEGMENT_POINT_ID INTEGER PRIMARY KEY,
             |$COL_DISTANCE LONG,
             |$COL_ELAPSED_TIME LONG,
             |$COL_ALTITUDE_CHANGE LONG,
@@ -387,7 +406,7 @@ internal class DataStore(context: Context) {
             |$COL_SPEED LONG)"""
 
         private val CREATE_TABLE_STATS_TRIP_SEGMENTS = """CREATE TABLE $TABLE_STATS_TRIP_SEGMENTS(
-            |$COL_TRIP_SEGMENT_ID INTEGER,
+            |$COL_TRIP_SEGMENT_ID INTEGER PRIMARY KEY,
             |$COL_DISTANCE LONG,
             |$COL_ELAPSED_TIME LONG,
             |$COL_SPEED LONG,
@@ -399,11 +418,10 @@ internal class DataStore(context: Context) {
             |$COL_TOTAL_DESCENT LONG)"""
 
         private val CREATE_TABLE_STATS_TRIPS = """CREATE TABLE $TABLE_STATS_TRIPS(
-            |$COL_TRIP_ID INTEGER,
+            |$COL_TRIP_ID INTEGER PRIMARY KEY,
             |$COL_DISTANCE LONG,
             |$COL_ELAPSED_TIME LONG,
             |$COL_RIDE_TIME LONG,
-            |$COL_STOPPED_TIME LONG,
             |$COL_SPEED LONG,
             |$COL_MIN_ALTITUDE LONG,
             |$COL_MAX_ALTITUDE LONG,
@@ -416,12 +434,18 @@ internal class DataStore(context: Context) {
 
     }
 
-    private fun calculateSlope(altitudeChange: String, distance: String): String? {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    private fun calculateSlope(altitudeChange: Meters, distance: Meters): Degrees {
+        val slope = altitudeChange / distance
+        val radians = Math.atan(slope.toDouble())
+        return radiansToDegrees(radians)
     }
 
-    private fun calculateSpeed(distance: String?, time: String?): String? {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    private fun radiansToDegrees(radians: Double): Degrees = (radians / (Math.PI / 180)).toLong()
+
+    private fun calculateSpeed(distance: Meters, time: Milliseconds): KilometersPerHour {
+        val km = distance / 1000
+        val hours = time / MILLISECONDS_PER_HOUR
+        return km / hours
     }
 }
 
