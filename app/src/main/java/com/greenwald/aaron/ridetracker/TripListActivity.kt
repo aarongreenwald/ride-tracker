@@ -36,11 +36,11 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
         input.inputType = InputType.TYPE_CLASS_TEXT
         builder.setView(input)
 
-        builder.setPositiveButton("Create") { dialog, which ->
+        builder.setPositiveButton("Create") { dialog, _ ->
             val text = input.text.toString()
             createTripAndOpenActivity(text)
         }
-        builder.setNegativeButton("Cancel") { dialog, which -> dialog.cancel() }
+        builder.setNegativeButton("Cancel") { dialog, _ -> dialog.cancel() }
 
 
         builder.show()

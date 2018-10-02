@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <LinearLayout
+        android:id="@+id/single_stat"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="10dp"
+        android:showDividers="end">
+
+        <TextView
+            android:id="@+id/labelTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/trip_length"
+            android:textSize="10pt"
+            tools:text="@string/trip_length" />
+
+        <TextView
+            android:id="@+id/valueTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textAlignment="textEnd"
+            android:textSize="10pt" />
+
+    </LinearLayout>
+</android.support.constraint.ConstraintLayout>

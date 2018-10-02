@@ -4,6 +4,18 @@
     <string name="stats">Stats</string>
     <string name="map">Map</string>
 
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="trip_length">Trip Length</string>
+    <string name="trip_distance">Trip Distance</string>
+    <string name="riding_time">Riding Time</string>
+    <string name="stop_time">Stop Time</string>
+    <string name="total_time">Total Time</string>
+    <string name="max_segment_time">Longest Segment</string>
+    <string name="max_segment_distance">Longest Segment</string>
+    <string name="max_slope">Max Slope</string>
+    <string name="min_slope">Min Slope</string>
+    <string name="altitude_range">Altitude Range</string>
+    <string name="max_altitude">Max Altitude</string>
+    <string name="min_altitude">Min Altitude</string>
+    <string name="total_ascent">Total Ascent</string>
+    <string name="total_descent">Total Descent</string>
 </resources>
