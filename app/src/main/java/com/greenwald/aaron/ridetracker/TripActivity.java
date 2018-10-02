@@ -18,7 +18,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
-import android.widget.Toast;
 
 import com.greenwald.aaron.ridetracker.model.Trip;
 
@@ -69,6 +68,7 @@ public class TripActivity extends AppCompatActivity {
 
             }
         });
+        showCurrentStatus(this);
 
     }
 
@@ -96,7 +96,7 @@ public class TripActivity extends AppCompatActivity {
                     LocationTrackingService.isRunning = true;
                 }
 
-                showStatusToast(context);
+                showCurrentStatus(context);
 
             }
 
@@ -105,7 +105,7 @@ public class TripActivity extends AppCompatActivity {
         }
     }
 
-    private void showStatusToast(final Context context) {
+    private void showCurrentStatus(final Context context) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -114,10 +114,6 @@ public class TripActivity extends AppCompatActivity {
                         android.R.drawable.ic_media_pause :
                         android.R.drawable.ic_media_play
                 );
-
-                String text = String.format("Tracking %s", LocationTrackingService.isRunning ? "on" : "paused");
-                Toast toast = Toast.makeText(context, text, Toast.LENGTH_LONG);
-                toast.show();
             }
         });
     }

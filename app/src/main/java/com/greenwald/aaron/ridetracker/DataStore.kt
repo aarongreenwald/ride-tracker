@@ -12,7 +12,7 @@ import java.time.Instant
 import java.util.*
 
 
-private const val DATABASE_VERSION = 12
+private const val DATABASE_VERSION = 14
 private const val DATABASE_NAME = "ride-tracker"
 
 internal class DataStore(context: Context) {
@@ -121,7 +121,7 @@ internal class DataStore(context: Context) {
 
             val values = ContentValues()
             values.put(COL_TRIP_ID, trip.id)
-            values.put(COL_SEGMENT_STARTED_TIMESTAMP, segment.startedTimestamp.toString())
+            values.put(COL_SEGMENT_STARTED_TIMESTAMP, segment.startedTimestamp.time)
 
             return db.insert(TABLE_TRIP_SEGMENTS, null, values)
         }
@@ -144,10 +144,23 @@ internal class DataStore(context: Context) {
             val db = this.writableDatabase
 
             val values = ContentValues()
-            values.put(COL_SEGMENT_STOPPED_TIMESTAMP, stoppedTimestamp.toString())
+            values.put(COL_SEGMENT_STOPPED_TIMESTAMP, stoppedTimestamp.time)
 
             db.update(TABLE_TRIP_SEGMENTS, values, "$COL_ID = ?",
                     arrayOf(id.toString()))
+        }
+
+        fun insertSegmentPointStats(id: SegmentPointId, distance: Meters, elapsedTime: Milliseconds, altitudeChange: Meters) {
+            val db = this.writableDatabase
+            val values = ContentValues()
+            values.put(COL_SEGMENT_POINT_ID, id.toString())
+            values.put(COL_DISTANCE, distance.value)
+            values.put(COL_ELAPSED_TIME, elapsedTime.value)
+            values.put(COL_AVG_SPEED, KilometersPerHour.from(distance, elapsedTime).value)
+            values.put(COL_ALTITUDE_CHANGE, altitudeChange.value)
+            values.put(COL_SLOPE, Degrees.from(altitudeChange, distance).value)
+
+            db.insert(TABLE_STATS_SEGMENT_POINTS, null, values)
         }
 
         fun insertSegmentStats(id: SegmentId) {
@@ -163,7 +176,7 @@ internal class DataStore(context: Context) {
                 MAX(a.$COL_SLOPE),
                 SUM(CASE WHEN a.$COL_ALTITUDE_CHANGE > 0 THEN a.$COL_ALTITUDE_CHANGE ELSE 0 END),
                 SUM(CASE WHEN a.$COL_ALTITUDE_CHANGE < 0 THEN ABS(a.$COL_ALTITUDE_CHANGE) ELSE 0 END),
-                MAX(a.$COL_SPEED)
+                MAX(a.$COL_AVG_SPEED)
                 FROM $TABLE_STATS_SEGMENT_POINTS a
                     INNER JOIN $TABLE_SEGMENT_POINTS b ON a.$COL_SEGMENT_POINT_ID = b.$COL_ID
                 WHERE b.$COL_TRIP_SEGMENT_ID = $id""".trimMargin()
@@ -181,7 +194,7 @@ internal class DataStore(context: Context) {
             values.put(COL_ELAPSED_TIME, elapsedTime)
             values.put(COL_MIN_ALTITUDE, c.getDouble(2))
             values.put(COL_MAX_ALTITUDE, c.getDouble(3))
-            values.put(COL_SPEED, KilometersPerHour.from(Meters(distance), Milliseconds(elapsedTime)).value)
+            values.put(COL_AVG_SPEED, KilometersPerHour.from(Meters(distance), Milliseconds(elapsedTime)).value)
             values.put(COL_MAX_SPEED, c.getDouble(8))
             values.put(COL_MIN_SLOPE, c.getDouble(4))
             values.put(COL_MAX_SLOPE, c.getDouble(5))
@@ -190,19 +203,6 @@ internal class DataStore(context: Context) {
 
             db.insert(TABLE_STATS_TRIP_SEGMENTS, null, values)
             updateTripStatsForSegment(id)
-        }
-
-        fun insertSegmentPointStats(id: SegmentPointId, distance: Meters, elapsedTime: Milliseconds, altitudeChange: Meters) {
-            val db = this.writableDatabase
-            val values = ContentValues()
-            values.put(COL_SEGMENT_POINT_ID, id.toString())
-            values.put(COL_DISTANCE, distance.value)
-            values.put(COL_ELAPSED_TIME, elapsedTime.value)
-            values.put(COL_SPEED, KilometersPerHour.from(distance, elapsedTime).value)
-            values.put(COL_ALTITUDE_CHANGE, altitudeChange.value)
-            values.put(COL_SLOPE, Degrees.from(altitudeChange, distance).value)
-
-            db.insert(TABLE_STATS_SEGMENT_POINTS, null, values)
         }
 
         fun getTrip(id: TripId): Trip {
@@ -252,7 +252,9 @@ internal class DataStore(context: Context) {
                     MAX(a.$COL_DISTANCE),
                     MAX(a.$COL_ELAPSED_TIME),
                     b.$COL_TRIP_ID,
-                    MAX(a.$COL_MAX_SPEED)
+                    MAX(a.$COL_MAX_SPEED),
+                    MIN(b.$COL_SEGMENT_STARTED_TIMESTAMP),
+                    MAX(b.$COL_SEGMENT_STOPPED_TIMESTAMP)
                 FROM $TABLE_STATS_TRIP_SEGMENTS a
                     INNER JOIN $TABLE_TRIP_SEGMENTS b ON a.$COL_TRIP_SEGMENT_ID = b.$COL_ID
                 WHERE b.$COL_TRIP_ID IN (SELECT $COL_TRIP_ID FROM $TABLE_TRIP_SEGMENTS WHERE $COL_ID = $id)""".trimMargin()
@@ -265,12 +267,12 @@ internal class DataStore(context: Context) {
 
             val distance = c.getDouble(0)
             values.put(COL_DISTANCE, distance)
-//            values.put(COL_ELAPSED_TIME, c.getString(1))
+            values.put(COL_ELAPSED_TIME, c.getLong(13) - c.getLong(12))
             val elapsedTime = c.getLong(1)
             values.put(COL_RIDE_TIME, elapsedTime)
             values.put(COL_MIN_ALTITUDE, c.getString(2))
             values.put(COL_MAX_ALTITUDE, c.getString(3))
-            values.put(COL_SPEED, KilometersPerHour.from(Meters(distance), Milliseconds(elapsedTime)).value)
+            values.put(COL_AVG_SPEED, KilometersPerHour.from(Meters(distance), Milliseconds(elapsedTime)).value)
             values.put(COL_MAX_SPEED, c.getDouble(11))
             values.put(COL_MIN_SLOPE, c.getString(4))
             values.put(COL_MAX_SLOPE, c.getString(5))
@@ -336,7 +338,7 @@ internal class DataStore(context: Context) {
         )
 
         private fun createSegmentFromCursor(c: Cursor) = Segment(
-            startedTimestamp = Date(c.getString(c.getColumnIndex(COL_SEGMENT_STARTED_TIMESTAMP))),
+            startedTimestamp = Date(c.getLong(c.getColumnIndex(COL_SEGMENT_STARTED_TIMESTAMP))),
             id = c.getLong(c.getColumnIndex(COL_ID))
         )
 
@@ -348,7 +350,8 @@ internal class DataStore(context: Context) {
             elapsedTime = Milliseconds(cursor.getLong(cursor.getColumnIndex(COL_ELAPSED_TIME))),
             ridingTime = Milliseconds(cursor.getLong(cursor.getColumnIndex(COL_RIDE_TIME))),
             maxAltitude = Meters(cursor.getDouble(cursor.getColumnIndex(COL_MAX_ALTITUDE))),
-            minAltitude = Meters(cursor.getDouble(cursor.getColumnIndex(COL_MIN_ALTITUDE)))
+            minAltitude = Meters(cursor.getDouble(cursor.getColumnIndex(COL_MIN_ALTITUDE))),
+            maxSpeed = KilometersPerHour(cursor.getDouble(cursor.getColumnIndex(COL_MAX_SPEED)))
         )
 
 
@@ -378,7 +381,7 @@ internal class DataStore(context: Context) {
         private val COL_ELAPSED_TIME = "elapsed_time"
         private val COL_ALTITUDE_CHANGE = "altitude_change"
         private val COL_SLOPE = "slope"
-        private val COL_SPEED = "speed"
+        private val COL_AVG_SPEED = "speed"
 
         private val COL_MAX_SPEED = "max_speed"
         private val COL_MIN_ALTITUDE = "min_altitude"
@@ -418,14 +421,14 @@ internal class DataStore(context: Context) {
             $COL_ELAPSED_TIME DOUBLE,
             $COL_ALTITUDE_CHANGE DOUBLE,
             $COL_SLOPE DOUBLE,
-            $COL_SPEED DOUBLE,
+            $COL_AVG_SPEED DOUBLE,
             FOREIGN KEY($COL_SEGMENT_POINT_ID) REFERENCES $TABLE_SEGMENT_POINTS($COL_ID))"""
 
         private val CREATE_TABLE_STATS_TRIP_SEGMENTS = """CREATE TABLE $TABLE_STATS_TRIP_SEGMENTS(
             $COL_TRIP_SEGMENT_ID INTEGER UNIQUE,
             $COL_DISTANCE DOUBLE,
             $COL_ELAPSED_TIME DOUBLE,
-            $COL_SPEED DOUBLE,
+            $COL_AVG_SPEED DOUBLE,
             $COL_MAX_SPEED DOUBLE,
             $COL_MIN_ALTITUDE DOUBLE,
             $COL_MAX_ALTITUDE DOUBLE,
@@ -440,7 +443,7 @@ internal class DataStore(context: Context) {
             $COL_DISTANCE DOUBLE,
             $COL_ELAPSED_TIME DOUBLE,
             $COL_RIDE_TIME DOUBLE,
-            $COL_SPEED DOUBLE,
+            $COL_AVG_SPEED DOUBLE,
             $COL_MAX_SPEED DOUBLE,
             $COL_MIN_ALTITUDE DOUBLE,
             $COL_MAX_ALTITUDE DOUBLE,

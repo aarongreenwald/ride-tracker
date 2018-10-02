@@ -29,10 +29,15 @@ class StatsFragment : Fragment() {
 
         val stats = view.findViewById<LinearLayout>(R.id.stats)
         stats.addView(createSingleStat(R.string.trip_distance, trip.distance.toString()))
+
+        stats.addView(createSingleStat(R.string.total_time, trip.elapsedTime.toString()))
         stats.addView(createSingleStat(R.string.riding_time, trip.ridingTime.toString()))
+        stats.addView(createSingleStat(R.string.stop_time, trip.stoppedTime.toString()))
+
         stats.addView(createSingleStat(R.string.avg_riding_speed, trip.averageRidingSpeed.toString()))
         stats.addView(createSingleStat(R.string.max_speed, trip.maxSpeed.toString()))
-        ///////////
+
+
 //        stats.addView(createSingleStat(R.string.max_segment_time, "01:23"))
 //        stats.addView(createSingleStat(R.string.max_segment_distance, "100.5 km"))
 //

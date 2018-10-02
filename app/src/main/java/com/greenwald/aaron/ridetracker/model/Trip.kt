@@ -16,6 +16,7 @@ data class Trip (val name: String,
 
     val averageRidingSpeed: KilometersPerHour get() = KilometersPerHour.from(distance, ridingTime)
     val altitudeRange: Meters get() = Meters(maxAltitude.value - minAltitude.value)
+    val stoppedTime: Milliseconds get() = Milliseconds(elapsedTime.value - ridingTime.value)
 
     fun getAllLocations(): List<LatLng> =
             segments.flatMap({segment -> segment.segmentPoints.map(SegmentPoint::latLng) })
