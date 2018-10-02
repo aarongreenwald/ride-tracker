@@ -18,11 +18,6 @@ data class Trip (val name: String,
     val altitudeRange: Meters get() = Meters(maxAltitude.value - minAltitude.value)
     val stoppedTime: Milliseconds get() = Milliseconds(elapsedTime.value - ridingTime.value)
 
-    fun getAllLocations(): List<LatLng> =
+    fun getAllPoints(): List<LatLng> =
             segments.flatMap({segment -> segment.segmentPoints.map(SegmentPoint::latLng) })
-
-    val startingPoint: SegmentPoint?
-        get() = segments.getOrNull(0)?.segmentPoints?.getOrNull(0)
-
-
 }

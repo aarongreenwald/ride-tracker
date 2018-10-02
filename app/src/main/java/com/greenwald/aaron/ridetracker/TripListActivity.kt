@@ -12,7 +12,6 @@ import android.widget.EditText
 import com.greenwald.aaron.ridetracker.model.Trip
 import java.text.SimpleDateFormat
 
-import java.time.Instant
 import java.util.Date
 
 class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInteractionListener {

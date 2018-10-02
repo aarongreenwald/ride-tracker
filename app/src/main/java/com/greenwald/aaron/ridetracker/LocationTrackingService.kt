@@ -67,15 +67,15 @@ class LocationTrackingService : Service() {
                 Location.distanceBetween(this.previousLocation!!.latitude, this.previousLocation!!.longitude, loc.latitude, loc.longitude, results)
             }
             val now = Instant.now()
-            val altitudeChange = if (this.previousLocation != null) (loc.altitude - this.previousLocation!!.altitude).toLong() else 0
+            val altitudeChange = if (this.previousLocation != null) (loc.altitude - this.previousLocation!!.altitude.value) else 0.0
             val elapsedTime = if (this.previousLocation != null) Milliseconds(now.toEpochMilli() - this.previousLocation!!.dateTime.toInstant().toEpochMilli()) else Milliseconds(0)
 
             val segmentPoint = SegmentPoint(loc.latitude,
                     loc.longitude,
                     loc.accuracy.toDouble(),
                     Date.from(now),
-                    loc.altitude,
-                    Meters(altitudeChange.toDouble()),
+                    Meters(loc.altitude),
+                    Meters(altitudeChange),
                     elapsedTime,
                     Meters(results[0].toDouble())
             )

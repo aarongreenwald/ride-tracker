@@ -3,9 +3,6 @@ package com.greenwald.aaron.ridetracker
 //https://gist.github.com/joshdholtz/4522551
 
 import android.Manifest
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -21,7 +18,6 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.MapsInitializer
 import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.JointType
 import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.PolylineOptions
@@ -103,7 +99,7 @@ class MapFragment : Fragment() {
             polylines.forEach { polyline -> map.addPolyline(polyline) }
 
             val builder = LatLngBounds.builder()
-            val locations = trip.getAllLocations()
+            val locations = trip.getAllPoints()
             if (locations.isNotEmpty()) {
                 locations.forEach { latLng -> builder.include(latLng) }
                 map.moveCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 200))
