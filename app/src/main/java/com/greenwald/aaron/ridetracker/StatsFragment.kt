@@ -36,9 +36,9 @@ class StatsFragment : Fragment() {
         //////////
         stats.addView(createSingleStat(R.string.max_slope, "10deg"))
         stats.addView(createSingleStat(R.string.min_slope, "-3deg"))
-        stats.addView(createSingleStat(R.string.altitude_range, "1800m"))
         stats.addView(createSingleStat(R.string.max_altitude, "2000m"))
         stats.addView(createSingleStat(R.string.min_altitude, "-100m"))
+        stats.addView(createSingleStat(R.string.altitude_range, "1800m")) //calc at display timef
         stats.addView(createSingleStat(R.string.total_ascent, "4000m"))
         stats.addView(createSingleStat(R.string.total_descent, "-3000m"))
 
