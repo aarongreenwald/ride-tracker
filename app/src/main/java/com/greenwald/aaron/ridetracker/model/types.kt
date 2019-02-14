@@ -1,6 +1,8 @@
 package com.greenwald.aaron.ridetracker.model
 
-data class KilometersPerHour(val value: Double) {
+import java.io.Serializable
+
+data class KilometersPerHour(val value: Double): Serializable {
     override fun toString() = "${value.toInt()} km/h"
 
     companion object {
@@ -19,7 +21,7 @@ data class KilometersPerHour(val value: Double) {
     }
 }
 
-data class Kilometers(val value: Double) {
+data class Kilometers(val value: Double): Serializable {
     override fun toString(): String {
         return "${"%.1f".format(value)} km"
     }
@@ -27,7 +29,7 @@ data class Kilometers(val value: Double) {
     fun asMeters() = Meters(value * 1000)
 }
 
-data class Milliseconds(val value: Long) {
+data class Milliseconds(val value: Long): Serializable {
     private fun pad(value: Long) = value.toString().padStart(2, '0')
 
     fun asHours() = value.toDouble() / MILLISECONDS_PER_HOUR
@@ -42,7 +44,7 @@ data class Milliseconds(val value: Long) {
     }
 }
 
-data class Degrees(val value: Double) {
+data class Degrees(val value: Double): Serializable {
     companion object {
         private fun radiansToDegrees(radians: Double) =
                 Degrees((radians / (Math.PI / 180)))
@@ -57,7 +59,7 @@ data class Degrees(val value: Double) {
     }
 }
 
-data class Meters(val value: Double) {
+data class Meters(val value: Double): Serializable {
     override fun toString() = "${value.toInt()}m"
 }
 

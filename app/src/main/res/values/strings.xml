@@ -20,4 +20,9 @@
     <string name="total_descent">Total Descent</string>
     <string name="avg_riding_speed">Avg Riding Speed</string>
     <string name="max_speed">Top Speed</string>
+    <string name="notification_title">Ride Tracker</string>
+    <string name="notification_message">Tracking Ride</string>
+    <string name="ticker_text">Wat\'s ticker text?</string>
+    <string name="channel_name">persistent_notification</string>
+    <string name="channel_description">the channel description</string>
 </resources>

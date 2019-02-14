@@ -19,13 +19,13 @@ internal class DataStore(context: Context) {
     }
 
     fun startTripSegment(trip: Trip): Segment {
-        val segment = Segment(Date.from(Instant.now()))
+        val segment = Segment(Date())
         val id = db.insertSegment(trip, segment)
         return segment.copy(id = id)
     }
 
     fun stopTripSegment(segment: Segment) {
-        db.updateSegment(segment.id, Date.from(Instant.now()))
+        db.updateSegment(segment.id, Date())
         db.insertSegmentStats(segment.id)
     }
 

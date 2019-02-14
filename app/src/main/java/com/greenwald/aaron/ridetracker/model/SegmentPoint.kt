@@ -2,6 +2,7 @@ package com.greenwald.aaron.ridetracker.model
 
 import com.google.android.gms.maps.model.LatLng
 import com.google.gson.Gson
+import java.io.Serializable
 
 import java.util.Date
 
@@ -12,7 +13,7 @@ data class SegmentPoint(val latitude: Double,
                         val altitude: Meters,
                         val altitudeChange: Meters = Meters(0.0),
                         val elapsedTime: Milliseconds = Milliseconds(0),
-                        val distance: Meters = Meters(0.0)) {
+                        val distance: Meters = Meters(0.0)): Serializable {
 
     val latLng: LatLng
         get() = LatLng(this.latitude, this.longitude)

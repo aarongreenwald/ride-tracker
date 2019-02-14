@@ -1,15 +1,18 @@
 package com.greenwald.aaron.ridetracker
 
 import android.annotation.SuppressLint
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
-import android.util.ArraySet
 import android.util.Log
 import android.widget.Toast
 
@@ -17,11 +20,8 @@ import com.greenwald.aaron.ridetracker.model.Meters
 import com.greenwald.aaron.ridetracker.model.Milliseconds
 import com.greenwald.aaron.ridetracker.model.Segment
 import com.greenwald.aaron.ridetracker.model.SegmentPoint
-import com.greenwald.aaron.ridetracker.model.Trip
 
-import java.time.Instant
 import java.util.Date
-import java.util.LinkedList
 
 //https://stackoverflow.com/a/14478281
 class LocationTrackingService : Service() {
@@ -44,6 +44,28 @@ class LocationTrackingService : Service() {
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         listener = MyLocationListener(this.ds!!, this.segment!!)
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0f, listener)
+
+        val notification = Notification.Builder(this)
+            .setContentTitle(getText(R.string.notification_title))
+            .setContentText(getText(R.string.notification_message))
+            .setSmallIcon(R.drawable.common_google_signin_btn_icon_dark_normal_background)
+//                .setContentIntent(pendingIntent)
+            .setTicker(getText(R.string.ticker_text))
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = getString(R.string.channel_name)
+            val descriptionText = getString(R.string.channel_description)
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val id = "whatever id"
+            val channel = NotificationChannel(id, name, importance)
+            channel.description = descriptionText
+            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+
+            notification.setChannelId(channel.id)
+        }
+
+        startForeground(1, notification.build())
     }
 
     override fun onBind(intent: Intent): IBinder? {
@@ -66,14 +88,14 @@ class LocationTrackingService : Service() {
             if (this.previousLocation != null) {
                 Location.distanceBetween(this.previousLocation!!.latitude, this.previousLocation!!.longitude, loc.latitude, loc.longitude, results)
             }
-            val now = Instant.now()
+            val now = Date()
             val altitudeChange = if (this.previousLocation != null) (loc.altitude - this.previousLocation!!.altitude.value) else 0.0
-            val elapsedTime = if (this.previousLocation != null) Milliseconds(now.toEpochMilli() - this.previousLocation!!.dateTime.toInstant().toEpochMilli()) else Milliseconds(0)
+            val elapsedTime = if (this.previousLocation != null) Milliseconds(now.time - this.previousLocation!!.dateTime.time) else Milliseconds(0)
 
             val segmentPoint = SegmentPoint(loc.latitude,
                     loc.longitude,
                     loc.accuracy.toDouble(),
-                    Date.from(now),
+                    Date(),
                     Meters(loc.altitude),
                     Meters(altitudeChange),
                     elapsedTime,

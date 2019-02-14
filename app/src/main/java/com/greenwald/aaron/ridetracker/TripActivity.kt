@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.os.AsyncTask
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.support.constraint.ConstraintLayout
@@ -65,19 +66,35 @@ class TripActivity : AppCompatActivity() {
         tabs.getTabAt(1)!!.setText(R.string.map)
     }
 
-    private fun onPlayPauseClicked() {
-        val context = this@TripActivity
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (!needsLocationPermission(this)) {
+            onPlayPauseClicked()
+        }
+    }
 
-        val locationManager = context
+    private fun startTracking() {
+        val intent = Intent(this, LocationTrackingService::class.java)
+        intent.putExtra("tripId", this.tripId)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
+
+    private fun onPlayPauseClicked() {
+        val locationManager = this
                 .getSystemService(Context.LOCATION_SERVICE) as LocationManager
         if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
 
-            if (needsLocationPermission(context)) {
-                ActivityCompat.requestPermissions(this@TripActivity, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), PackageManager.PERMISSION_GRANTED)
+            if (needsLocationPermission(this)) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), PackageManager.PERMISSION_GRANTED)
             } else {
-                val intent = Intent(this, LocationTrackingService::class.java)
-                intent.putExtra("tripId", this.tripId)
                 if (LocationTrackingService.isRunning) {
+                    val intent = Intent(this, LocationTrackingService::class.java)
+                    intent.putExtra("tripId", this.tripId)
                     stopService(intent)
                     LocationTrackingService.isRunning = false
                     LocationTrackingService.recordingTripId = null
@@ -93,7 +110,7 @@ class TripActivity : AppCompatActivity() {
                     }
 
                 } else {
-                    startService(intent)
+                    startTracking()
                     LocationTrackingService.isRunning = true
                     LocationTrackingService.recordingTripId = tripId
                 }
