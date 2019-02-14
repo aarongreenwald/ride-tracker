@@ -22,11 +22,11 @@ class TripListFragment : Fragment() {
         loadList(view)
 
 
-//        val pullToRefresh = view.findViewById<SwipeRefreshLayout>(R.id.pullToRefresh)
-//        pullToRefresh.setOnRefreshListener(SwipeRefreshLayout.OnRefreshListener {
-//            loadList(view)
-//            pullToRefresh.setRefreshing(false)
-//        })
+        val pullToRefresh = view.findViewById<SwipeRefreshLayout>(R.id.pullToRefresh)
+        pullToRefresh.setOnRefreshListener(SwipeRefreshLayout.OnRefreshListener {
+            loadList(view)
+            pullToRefresh.isRefreshing = false
+        })
 
 
         return view
@@ -35,9 +35,9 @@ class TripListFragment : Fragment() {
     private fun loadList(view: View) {
         val ds = DataStore(context)
         val trips = ds.trips
-        if (view is RecyclerView) {
-            view.adapter = TripRecyclerViewAdapter(trips, listener)
-        }
+        val rv = view.findViewById<RecyclerView>(R.id.list)
+        rv.adapter = TripRecyclerViewAdapter(trips, listener)
+        rv.scrollToPosition(0)
     }
 
 

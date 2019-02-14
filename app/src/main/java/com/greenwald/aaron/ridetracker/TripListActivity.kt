@@ -6,6 +6,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.support.design.widget.FloatingActionButton
 import android.support.v7.app.AppCompatActivity
+import android.support.v7.widget.RecyclerView
 import android.support.v7.widget.Toolbar
 import android.text.InputType
 import android.widget.EditText
@@ -33,7 +34,6 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
 
     override fun onTripLongPress(trip: Trip): Boolean {
         renameTrip(trip)
-        //how to refresh list?
         return true
 
     }
@@ -62,8 +62,21 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
                 confirmAction = { input -> { _, _ ->
                     val newName = input.text.toString()
                     saveTripName(trip, newName)
+
+                    refreshList()
                 } }
         )
+    }
+
+    private fun refreshList() {
+        val rv = this.findViewById<RecyclerView>(R.id.list)
+        val savedScrollPosition = rv.getLayoutManager()?.onSaveInstanceState();
+
+        val ds = DataStore(this.applicationContext)
+        val trips = ds.trips
+        rv.adapter = TripRecyclerViewAdapter(trips, this)
+
+        rv.getLayoutManager()?.onRestoreInstanceState(savedScrollPosition);
     }
 
     private fun saveTripName(trip:Trip, newName: String) {
@@ -74,7 +87,7 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
     private fun openTripActivity(trip: Trip) {
         val intent = Intent(this@TripListActivity, TripActivity::class.java)
         intent.putExtra("tripId", trip.id)
-        this@TripListActivity.startActivity(intent)
+        startActivity(intent)
     }
 
     private fun showTripDialog(title: String,
