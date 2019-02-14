@@ -9,6 +9,9 @@ import android.view.View
 import android.view.ViewGroup
 
 import com.greenwald.aaron.ridetracker.model.Trip
+import android.support.v4.widget.SwipeRefreshLayout
+
+
 
 class TripListFragment : Fragment() {
     private var listener: OnListFragmentInteractionListener? = null
@@ -16,12 +19,25 @@ class TripListFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_trip_list, container, false)
+        loadList(view)
+
+
+//        val pullToRefresh = view.findViewById<SwipeRefreshLayout>(R.id.pullToRefresh)
+//        pullToRefresh.setOnRefreshListener(SwipeRefreshLayout.OnRefreshListener {
+//            loadList(view)
+//            pullToRefresh.setRefreshing(false)
+//        })
+
+
+        return view
+    }
+
+    private fun loadList(view: View) {
         val ds = DataStore(context)
         val trips = ds.trips
         if (view is RecyclerView) {
             view.adapter = TripRecyclerViewAdapter(trips, listener)
         }
-        return view
     }
 
 
@@ -40,6 +56,7 @@ class TripListFragment : Fragment() {
     }
 
     interface OnListFragmentInteractionListener {
-        fun onListFragmentInteraction(trip: Trip)
+        fun onTripPress(trip: Trip)
+        fun onTripLongPress(trip: Trip): Boolean
     }
 }

@@ -70,6 +70,17 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
 
     }
 
+    fun updateTripName(id: TripId, newName: String) {
+        val db = this.writableDatabase
+
+        val values = ContentValues()
+        values.put(COL_TRIP_NAME, newName)
+
+        db.update(TABLE_TRIPS, values, "$COL_ID = ?",
+                arrayOf(id.toString()))
+
+    }
+
     fun insertSegment(trip: Trip, segment: Segment): SegmentId {
         val db = this.writableDatabase
 
@@ -100,8 +111,7 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
         val values = ContentValues()
         values.put(COL_SEGMENT_STOPPED_TIMESTAMP, stoppedTimestamp.time)
 
-        db.update(TABLE_TRIP_SEGMENTS, values, "$COL_ID = ?",
-                arrayOf(id.toString()))
+        db.update(TABLE_TRIP_SEGMENTS, values, "$COL_ID = ?", arrayOf(id.toString()))
     }
 
     fun insertSegmentPointStats(id: SegmentPointId, distance: Meters, elapsedTime: Milliseconds, altitudeChange: Meters) {

@@ -7,16 +7,17 @@ import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.os.AsyncTask
 import android.os.Bundle
+import android.os.Handler
+import android.support.constraint.ConstraintLayout
 import android.support.design.widget.FloatingActionButton
 import android.support.design.widget.TabLayout
-import android.support.v4.app.ActivityCompat
-import android.support.v4.app.Fragment
-import android.support.v4.app.FragmentManager
-import android.support.v4.app.FragmentPagerAdapter
+import android.support.v4.app.*
+import android.support.v4.view.PagerAdapter
 import android.support.v4.view.ViewPager
 import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.Toolbar
-import android.util.Log
+import android.view.View
+import android.widget.ImageButton
 
 import com.greenwald.aaron.ridetracker.model.Trip
 
@@ -33,14 +34,26 @@ class TripActivity : AppCompatActivity() {
             throw RuntimeException("Cannot open a trip without a valid tripId")
         }
 
+        setContentView(R.layout.activity_trip)
+
+        val fab = findViewById<FloatingActionButton>(R.id.playPauseButton)
+        fab.setOnClickListener { AsyncTask.execute { onPlayPauseClicked() } }
+        fab.setImageResource(android.R.drawable.ic_media_play)
+
+        val bigButton = findViewById<ImageButton>(R.id.bigPauseButton)
+        bigButton.setOnClickListener { AsyncTask.execute { onPlayPauseClicked() } }
+
+        updateButtonStatus()
+        updateData()
+    }
+
+    private fun updateData() {
         val ds = DataStore(applicationContext)
         val trip = ds.getTripWithDetails(tripId)
 
-        setContentView(R.layout.activity_trip)
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         toolbar.title = trip.name
         setSupportActionBar(toolbar)
-
 
         val viewPager = findViewById<ViewPager>(R.id.tripTabsViewPager)
         val pagerAdapter = TripActivityPagerAdapter(super.getSupportFragmentManager(), trip)
@@ -50,26 +63,16 @@ class TripActivity : AppCompatActivity() {
         tabs.setupWithViewPager(viewPager)
         tabs.getTabAt(0)!!.setText(R.string.stats)
         tabs.getTabAt(1)!!.setText(R.string.map)
-
-
-        val fab = findViewById<FloatingActionButton>(R.id.playPauseButton)
-        fab.setOnClickListener { AsyncTask.execute { onPlayPauseClicked() } }
-        showCurrentStatus(this)
-
     }
 
     private fun onPlayPauseClicked() {
         val context = this@TripActivity
 
-        val TAG = "TRACKER:"
-        Log.i(TAG, "starting")
         val locationManager = context
                 .getSystemService(Context.LOCATION_SERVICE) as LocationManager
         if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            Log.i(TAG, "provider enabled")
 
             if (needsLocationPermission(context)) {
-                Log.i(TAG, "need to request permissions")
                 ActivityCompat.requestPermissions(this@TripActivity, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), PackageManager.PERMISSION_GRANTED)
             } else {
                 val intent = Intent(this, LocationTrackingService::class.java)
@@ -78,39 +81,44 @@ class TripActivity : AppCompatActivity() {
                     stopService(intent)
                     LocationTrackingService.isRunning = false
                     LocationTrackingService.recordingTripId = null
+
+                    runOnUiThread {
+                        //this 100ms delay gives the service time to completely stop, which
+                        //is necessary because stopService is async but the stats need to be
+                        //calculated in the db before it's fetched again.
+                        //this is an EMBARRASSINGLY bad workaround for this problem. How do
+                        //I get notified when the service is finished stopping?
+                        val handler = Handler()
+                        handler.postDelayed(Runnable { updateData() }, 100)
+                    }
+
                 } else {
                     startService(intent)
                     LocationTrackingService.isRunning = true
                     LocationTrackingService.recordingTripId = tripId
                 }
 
-                showCurrentStatus(context)
-
+                updateButtonStatus()
             }
 
-        } else {
-            Log.i(TAG, "no enabled provider")
         }
     }
 
-    private fun showCurrentStatus(context: Context) {
+    private fun updateButtonStatus() {
         runOnUiThread {
             val fab = findViewById<FloatingActionButton>(R.id.playPauseButton)
-            val shouldShowPlayPauseButton = LocationTrackingService.recordingTripId == null ||
-                    LocationTrackingService.recordingTripId == tripId
+            val overlayButton = findViewById<ConstraintLayout>(R.id.pauseOverlay)
+            val isAnotherTripActive = LocationTrackingService.recordingTripId != null &&
+                    LocationTrackingService.recordingTripId != this.tripId
+            val shouldShowPlayFab = !isAnotherTripActive && !LocationTrackingService.isRunning
+            val shouldShowPauseOverlay = !isAnotherTripActive && LocationTrackingService.isRunning
 
-            val icon = if (LocationTrackingService.isRunning)
-                android.R.drawable.ic_media_pause
+            if (shouldShowPlayFab)
+                fab.show()
             else
-                android.R.drawable.ic_media_play
-
-            if (!shouldShowPlayPauseButton)
                 fab.hide()
-            else
-                fab.setImageResource(icon)
 
-
-
+            overlayButton.visibility = if (shouldShowPauseOverlay) View.VISIBLE else View.GONE
         }
     }
 
@@ -118,9 +126,15 @@ class TripActivity : AppCompatActivity() {
         return ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
     }
 
-    private inner class TripActivityPagerAdapter(supportFragmentManager: FragmentManager, private val trip: Trip) : FragmentPagerAdapter(supportFragmentManager) {
+    private inner class TripActivityPagerAdapter(supportFragmentManager: FragmentManager, private val trip: Trip) : FragmentStatePagerAdapter(supportFragmentManager) {
 
         override fun getCount() = 2
+
+        override fun getItemPosition(`object`: Any): Int {
+            //this forces the tabs to update way too much. this is NOT GOOD. find a better
+            //way to get the tabs to update when the data is updated.
+            return PagerAdapter.POSITION_NONE
+        }
 
         override fun getItem(i: Int): Fragment? {
             val bundle = Bundle()
@@ -128,13 +142,13 @@ class TripActivity : AppCompatActivity() {
             return when (i) {
                 0 -> {
                     val fragment = StatsFragment()
-                    fragment.setArguments(bundle)
+                    fragment.arguments = bundle
                     fragment
                 }
 
                 1 -> {
                     val fragment = MapFragment()
-                    fragment.setArguments(bundle)
+                    fragment.arguments = bundle
                     fragment
                 }
 

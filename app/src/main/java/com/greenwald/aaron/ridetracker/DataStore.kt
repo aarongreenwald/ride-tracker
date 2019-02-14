@@ -43,5 +43,9 @@ internal class DataStore(context: Context) {
         return db.getTripWithDetails(id)
     }
 
+    fun setTripName(id: TripId, newName: String) {
+        db.updateTripName(id, newName)
+    }
+
 }
 

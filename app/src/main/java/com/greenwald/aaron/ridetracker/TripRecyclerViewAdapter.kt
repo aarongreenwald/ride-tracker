@@ -31,7 +31,11 @@ class TripRecyclerViewAdapter internal constructor(private val trips: List<Trip>
         holder.distanceTextView.text = trips[position].distance.toString()
 
         holder.view.setOnClickListener {
-            interactionListener?.onListFragmentInteraction(holder.trip!!)
+            interactionListener?.onTripPress(holder.trip!!)
+        }
+
+        holder.view.setOnLongClickListener {
+            interactionListener!!.onTripLongPress(holder.trip!!)
         }
     }
 
