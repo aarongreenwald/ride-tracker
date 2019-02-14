@@ -1,10 +1,7 @@
 package com.greenwald.aaron.ridetracker
 
 import android.annotation.SuppressLint
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.Service
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.location.Location
@@ -45,12 +42,16 @@ class LocationTrackingService : Service() {
         listener = MyLocationListener(this.ds!!, this.segment!!)
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0f, listener)
 
+        val intent = Intent(this, TripActivity::class.java)
+        intent.putExtra("tripId", tripId)
+        val pendingIntent = PendingIntent.getActivity(this, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+
         val notification = Notification.Builder(this)
             .setContentTitle(getText(R.string.notification_title))
-            .setContentText(getText(R.string.notification_message))
-            .setSmallIcon(R.drawable.common_google_signin_btn_icon_dark_normal_background)
-//                .setContentIntent(pendingIntent)
-            .setTicker(getText(R.string.ticker_text))
+//            .setContentText(getText(R.string.notification_message))
+            .setSmallIcon(R.drawable.ic_motorcycle)
+            .setContentIntent(pendingIntent)
+//            .setTicker(getText(R.string.ticker_text))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = getString(R.string.channel_name)

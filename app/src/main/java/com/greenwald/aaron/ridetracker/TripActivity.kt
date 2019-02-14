@@ -48,6 +48,18 @@ class TripActivity : AppCompatActivity() {
         updateData()
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        this.tripId = intent!!.getLongExtra("tripId", -1)
+
+        if (tripId == -1L) {
+            throw RuntimeException("Cannot open a trip without a valid tripId")
+        }
+
+        updateButtonStatus()
+        updateData()
+    }
+
     private fun updateData() {
         val ds = DataStore(applicationContext)
         val trip = ds.getTripWithDetails(tripId)
