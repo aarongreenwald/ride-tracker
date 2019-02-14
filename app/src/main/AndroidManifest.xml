@@ -56,10 +56,12 @@
         <activity
             android:name=".TripActivity"
             android:parentActivityName=".TripListActivity"
+            android:launchMode="singleTop"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".TripListActivity"
             android:label="@string/title_activity_trip_list"
+            android:launchMode="singleTop"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
