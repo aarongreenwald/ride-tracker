@@ -16,6 +16,10 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            it.buildConfigField 'String', 'MapsAPIKey', MapsAPIKeyProd
+        }
+        debug {
+            it.buildConfigField 'String', 'MapsAPIKey', MapsAPIKeyDev
         }
     }
     productFlavors {
