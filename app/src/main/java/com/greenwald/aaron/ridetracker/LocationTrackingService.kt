@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.location.Criteria
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -40,7 +41,21 @@ class LocationTrackingService : Service() {
         this.segment = ds!!.startTripSegment(trip)
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         listener = MyLocationListener(this.ds!!, this.segment!!)
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0f, listener)
+        val criteria = Criteria()
+        criteria.accuracy = Criteria.ACCURACY_FINE
+        criteria.powerRequirement = Criteria.POWER_HIGH;
+        criteria.isAltitudeRequired = false; //not as important for now. reconsider tis later
+        criteria.isSpeedRequired = false;
+        criteria.isCostAllowed = true;
+        criteria.isBearingRequired = false;
+        criteria.horizontalAccuracy = Criteria.ACCURACY_HIGH;
+        criteria.verticalAccuracy = Criteria.ACCURACY_HIGH;
+        //is the best provider dynamically responding to conditions? or is it chosen once onstart?
+        val bestProvider = locationManager.getBestProvider(criteria, true)
+        locationManager.requestLocationUpdates(bestProvider,
+                1000,
+                10f,
+                listener)
 
         val intent = Intent(this, TripActivity::class.java)
         intent.putExtra("tripId", tripId)
@@ -103,7 +118,7 @@ class LocationTrackingService : Service() {
                     Meters(results[0].toDouble())
             )
 
-            Log.i("AGGG", segmentPoint.toString())
+            Log.d("POINT RECORDED", segmentPoint.toString())
             this.previousLocation = segmentPoint
             this.ds.recordSegmentPoint(this.segment, segmentPoint)
             val intent = Intent()
