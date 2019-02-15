@@ -44,7 +44,7 @@ class LocationTrackingService : Service() {
         val criteria = Criteria()
         criteria.accuracy = Criteria.ACCURACY_FINE
         criteria.powerRequirement = Criteria.POWER_HIGH;
-        criteria.isAltitudeRequired = false; //not as important for now. reconsider tis later
+        criteria.isAltitudeRequired = false; //not as important for now. reconsider this later
         criteria.isSpeedRequired = false;
         criteria.isCostAllowed = true;
         criteria.isBearingRequired = false;
@@ -54,7 +54,7 @@ class LocationTrackingService : Service() {
         val bestProvider = locationManager.getBestProvider(criteria, true)
         locationManager.requestLocationUpdates(bestProvider,
                 1000,
-                10f,
+                25f,
                 listener)
 
         val intent = Intent(this, TripActivity::class.java)
