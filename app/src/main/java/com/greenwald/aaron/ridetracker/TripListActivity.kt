@@ -22,10 +22,16 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_trip_list)
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
+        toolbar.setOnClickListener { showCredits() }
         setSupportActionBar(toolbar)
 
         val fab = findViewById<FloatingActionButton>(R.id.newTripFab)
         fab.setOnClickListener { createNewTrip() }
+    }
+
+    private fun showCredits() {
+        val intent = Intent(this, CreditsActivity::class.java)
+        startActivity(intent)
     }
 
     override fun onTripPress(trip: Trip) {

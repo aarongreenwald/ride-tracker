@@ -55,8 +55,8 @@
 
         <activity
             android:name=".TripActivity"
-            android:parentActivityName=".TripListActivity"
             android:launchMode="singleTop"
+            android:parentActivityName=".TripListActivity"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".TripListActivity"
@@ -65,9 +65,14 @@
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".CreditsActivity"
+            android:launchMode="singleTop"
+            android:parentActivityName=".TripListActivity"
+            android:theme="@style/AppTheme.NoActionBar"/>
     </application>
 
 </manifest>

@@ -24,12 +24,6 @@
             android:background="@color/colorPrimary"
             app:titleTextColor="@color/white"
             app:popupTheme="@style/AppTheme.PopupOverlay">
-            <!--TODO - put the credits somewere -->
-            <TextView
-                android:id="@+id/credits"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/credits" />
         </android.support.v7.widget.Toolbar>
 
         <include layout="@layout/content_trip_list" />
