@@ -129,7 +129,7 @@ class LocationTrackingService : Service() {
 
 
         override fun onStatusChanged(provider: String, status: Int, extras: Bundle) {
-            showToast("Status changed: $status")
+//            showToast("Status changed: $status")
         }
 
     }
