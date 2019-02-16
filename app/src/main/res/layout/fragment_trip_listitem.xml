@@ -1,53 +1,95 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="100dp"
-    android:orientation="horizontal"
-    android:padding="5dp"
-    android:background="@drawable/list_item">
-    <TextView
-        android:id="@+id/tripName"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:gravity="start"
-        android:layout_gravity="center"
-        android:layout_margin="@dimen/text_margin"
-        android:layout_weight="1"
-        android:textSize="25sp"
-        android:textAppearance="?attr/textAppearanceListItem" />
+    android:layout_height="wrap_content"
+    android:orientation="horizontal" >
 
-    <ProgressBar
-        android:id="@+id/tripRunningIndicator"
-        style="?android:attr/progressBarStyle"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:indeterminate="true"
-        android:indeterminateTintMode="src_atop"
-        android:indeterminateTint="#4c4"
-        android:layout_gravity="center" />
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:gravity="end"
-        android:orientation="vertical">
-        <TextView
-            android:id="@+id/tripTime"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="start"
-            android:layout_margin="@dimen/text_margin"
-            android:layout_weight="1"
-            android:textAppearance="?attr/textAppearanceListItem" />
+        <LinearLayout
+            android:id="@+id/listActions"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="end">
 
-        <TextView
-            android:id="@+id/tripDistance"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="end"
-            android:layout_margin="@dimen/text_margin"
-            android:layout_weight="1"
-            android:textAppearance="?attr/textAppearanceListItem" />
-    </LinearLayout>
+            <Button
+                android:id="@+id/editTrip"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:background="@android:color/holo_green_dark"
+                android:paddingLeft="20dp"
+                android:paddingRight="20dp"
+                android:text="Edit"
+
+                />
+
+            <Button
+                android:id="@+id/deleteTrip"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:background="@android:color/holo_red_dark"
+                android:paddingLeft="20dp"
+                android:paddingRight="20dp"
+                android:text="Delete" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/list_item"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:background="@drawable/list_item"
+            android:orientation="horizontal"
+            android:padding="5dp">
+
+            <TextView
+                android:id="@+id/tripName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_margin="@dimen/text_margin"
+                android:layout_weight="1"
+                android:gravity="start"
+                android:textAppearance="?attr/textAppearanceListItem"
+                android:textSize="25sp" />
+
+            <ProgressBar
+                android:id="@+id/tripRunningIndicator"
+                style="?android:attr/progressBarStyle"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:indeterminate="true"
+                android:indeterminateTint="#4c4"
+                android:indeterminateTintMode="src_atop" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tripTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="@dimen/text_margin"
+                    android:layout_weight="1"
+                    android:gravity="start"
+                    android:textAppearance="?attr/textAppearanceListItem" />
+
+                <TextView
+                    android:id="@+id/tripDistance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="@dimen/text_margin"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:textAppearance="?attr/textAppearanceListItem" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </FrameLayout>
 
 </LinearLayout>
