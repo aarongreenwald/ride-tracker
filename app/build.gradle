@@ -16,18 +16,17 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            it.buildConfigField 'String', 'MapsAPIKey', MapsAPIKeyProd
         }
-        debug {
-            it.buildConfigField 'String', 'MapsAPIKey', MapsAPIKeyDev
-        }
+        debug { }
     }
+    flavorDimensions "distribution"
     productFlavors {
         prod {
-            applicationId "com.greenwald.aaron.ridetracker"
+            resValue 'string', 'MapsAPIKey', MapsAPIKeyProd
         }
         dev {
-            applicationId "com.greenwald.aaron.rtdev"
+            applicationIdSuffix ".dev"
+            resValue 'string', 'MapsAPIKey', MapsAPIKeyDev
         }
     }
 }
