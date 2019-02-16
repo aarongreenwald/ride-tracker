@@ -80,7 +80,7 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
 
         val ds = DataStore(this.applicationContext)
         val trips = ds.trips
-        rv.adapter = TripRecyclerViewAdapter(trips, this)
+        rv.adapter = TripRecyclerViewAdapter(trips, this, rv)
 
         rv.getLayoutManager()?.onRestoreInstanceState(savedScrollPosition);
     }

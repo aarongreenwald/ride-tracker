@@ -36,7 +36,7 @@ class TripListFragment : Fragment() {
         val ds = DataStore(context)
         val trips = ds.trips
         val rv = view.findViewById<RecyclerView>(R.id.list)
-        rv.adapter = TripRecyclerViewAdapter(trips, listener)
+        rv.adapter = TripRecyclerViewAdapter(trips, listener, rv)
         rv.scrollToPosition(0)
     }
 
