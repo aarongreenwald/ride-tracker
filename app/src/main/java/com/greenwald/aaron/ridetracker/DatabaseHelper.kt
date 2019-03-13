@@ -3,7 +3,6 @@ package com.greenwald.aaron.ridetracker
 import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
-import android.database.DatabaseUtils
 import io.requery.android.database.sqlite.SQLiteDatabase
 import io.requery.android.database.sqlite.SQLiteOpenHelper
 import com.greenwald.aaron.ridetracker.model.*
@@ -52,6 +51,7 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
                 trips.add(trip)
             } while (c.moveToNext())
         }
+        db.close()
 
         return trips
     }
@@ -61,7 +61,9 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
 
         val values = ContentValues()
         values.put(COL_TRIP_NAME, trip.name)
-        return db.insert(TABLE_TRIPS, null, values)
+        val tripId = db.insert(TABLE_TRIPS, null, values)
+        db.close()
+        return tripId
 
     }
 
@@ -73,6 +75,7 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
 
         db.update(TABLE_TRIPS, values, "$COL_ID = ?",
                 arrayOf(id.toString()))
+        db.close()
 
     }
 
@@ -83,7 +86,9 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
         values.put(COL_TRIP_ID, trip.id)
         values.put(COL_SEGMENT_STARTED_TIMESTAMP, segment.startedTimestamp.time)
 
-        return db.insert(TABLE_TRIP_SEGMENTS, null, values)
+        val segmentId = db.insert(TABLE_TRIP_SEGMENTS, null, values)
+        db.close()
+        return segmentId
     }
 
     fun updateSegment(id: SegmentId, stoppedTimestamp: Date) {
@@ -93,6 +98,7 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
         values.put(COL_SEGMENT_STOPPED_TIMESTAMP, stoppedTimestamp.time)
 
         db.update(TABLE_TRIP_SEGMENTS, values, "$COL_ID = ?", arrayOf(id.toString()))
+        db.close()
     }
 
     fun insertSegmentPoint(segment: Segment, point: SegmentPoint): SegmentPointId {
@@ -106,7 +112,9 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
         values.put(COL_ALTITUDE, point.altitude.value)
         values.put(COL_ACCURACY, point.accuracy)
 
-        return db.insert(TABLE_SEGMENT_POINTS, null, values)
+        val segmentPointId = db.insert(TABLE_SEGMENT_POINTS, null, values)
+        db.close()
+        return segmentPointId
     }
 
     fun insertSegmentPointStats(id: SegmentPointId, distance: Meters, elapsedTime: Milliseconds, altitudeChange: Meters) {
@@ -120,6 +128,7 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
         values.put(COL_SLOPE, Degrees.from(altitudeChange, distance).value)
 
         db.insert(TABLE_STATS_SEGMENT_POINTS, null, values)
+        db.close()
     }
 
     fun getTrip(id: TripId): Trip {
@@ -134,9 +143,7 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
         val c = db.rawQuery(selectQuery, null)
 
         c?.moveToFirst()
-
-        DatabaseUtils.dumpCurrentRow(c!!)
-
+        db.close()
         return createTripFromCursor(c)
     }
 
@@ -156,7 +163,11 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
     private fun getSegmentsForTripId(tripId: TripId): ArrayList<Segment> {
         val db = this.readableDatabase
 
-        val selectQuery = """SELECT  * FROM $TABLE_TRIP_SEGMENTS WHERE $COL_TRIP_ID = $tripId"""
+        val selectQuery = """
+            SELECT ts.started_time, vs.* FROM $TABLE_TRIP_SEGMENTS ts
+            inner join $VIEW_SEGMENTS vs on ts.id = vs.trip_segment_id
+            WHERE ts.$COL_TRIP_ID = $tripId
+        """.trimMargin()
 
         val cursor = db.rawQuery(selectQuery, null)
 
@@ -169,8 +180,26 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
                 result.add(withSegmentPoints)
             }
         }
-
+        db.close()
         return result
+    }
+
+    fun getSegment(id: SegmentId): Segment {
+        val db = this.readableDatabase
+
+        val selectQuery = """
+            SELECT ts.started_time, vs.* FROM $TABLE_TRIP_SEGMENTS ts
+            inner join $VIEW_SEGMENTS vs on ts.id = vs.trip_segment_id
+            WHERE ts.$COL_ID = $id
+        """.trimMargin()
+
+        val c = db.rawQuery(selectQuery, null)
+
+        c?.moveToFirst()
+        val segment = createSegmentFromCursor(c)
+        db.close()
+        return segment
+//                .copy(segmentPoints = getSegmentPointsForSegmentId(segment.id))
     }
 
     private fun getSegmentPointsForSegmentId(segmentId: SegmentId): ArrayList<SegmentPoint> {
@@ -187,6 +216,7 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
                 result.add(segmentPoint)
             }
         }
+        db.close()
 
         return result
     }
@@ -199,9 +229,14 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
             altitude = Meters(cursor.getDouble(cursor.getColumnIndex(COL_ALTITUDE)))
     )
 
-    private fun createSegmentFromCursor(c: Cursor) = Segment(
-            startedTimestamp = Date(c.getLong(c.getColumnIndex(COL_SEGMENT_STARTED_TIMESTAMP))),
-            id = c.getLong(c.getColumnIndex(COL_ID))
+    private fun createSegmentFromCursor(cursor: Cursor) = Segment(
+            id = cursor.getLong(cursor.getColumnIndex(COL_TRIP_SEGMENT_ID)),
+            startedTimestamp = Date(cursor.getLong(cursor.getColumnIndex(COL_SEGMENT_STARTED_TIMESTAMP))),
+            distance = Kilometers((cursor.getDouble(cursor.getColumnIndex(COL_DISTANCE)) / 1000.0).toDouble()),
+            elapsedTime = Milliseconds(cursor.getLong(cursor.getColumnIndex(COL_ELAPSED_TIME))),
+            maxAltitude = Meters(cursor.getDouble(cursor.getColumnIndex(COL_MAX_ALTITUDE))),
+            minAltitude = Meters(cursor.getDouble(cursor.getColumnIndex(COL_MIN_ALTITUDE))),
+            maxSpeed = KilometersPerHour(cursor.getDouble(cursor.getColumnIndex(COL_MAX_SPEED)))
     )
 
 

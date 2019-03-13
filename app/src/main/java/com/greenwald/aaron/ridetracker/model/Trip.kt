@@ -19,5 +19,5 @@ data class Trip (val name: String,
     val stoppedTime: Milliseconds get() = Milliseconds(elapsedTime.value - ridingTime.value)
 
     fun getAllPoints(): List<LatLng> =
-            segments.flatMap({segment -> segment.segmentPoints.map(SegmentPoint::latLng) })
+            segments.flatMap { segment -> segment.segmentPoints.map(SegmentPoint::latLng) }
 }
