@@ -69,7 +69,7 @@ class MapFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         intentFilter.addAction("LOCATION_CHANGED")
 
-        val trip = arguments!!.getSerializable("trip") as Trip
+        val trip =  DataStore(activity!!.applicationContext).getTripWithDetails(arguments!!.getLong("tripId"))
 
         val polylines: List<PolylineOptions> = trip.segments.map { segment ->
             val locations = segment.segmentPoints.map(SegmentPoint::latLng)

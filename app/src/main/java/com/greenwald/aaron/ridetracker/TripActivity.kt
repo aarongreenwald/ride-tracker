@@ -62,7 +62,7 @@ class TripActivity : AppCompatActivity() {
 
     private fun updateData() {
         val ds = DataStore(applicationContext)
-        val trip = ds.getTripWithDetails(tripId)
+        val trip = ds.getTrip(tripId)
 
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         toolbar.title = trip.name
@@ -167,7 +167,7 @@ class TripActivity : AppCompatActivity() {
 
         override fun getItem(i: Int): Fragment? {
             val bundle = Bundle()
-            bundle.putSerializable("trip", this.trip)
+            bundle.putLong("tripId", trip.id)
             return when (i) {
                 0 -> {
                     val fragment = StatsFragment()

@@ -25,7 +25,7 @@ class StatsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val trip = arguments!!.getSerializable("trip") as Trip
+        val trip =  DataStore(activity!!.applicationContext).getTripWithDetails(arguments!!.getLong("tripId"))
 
         val stats = view.findViewById<LinearLayout>(R.id.stats)
         stats.addView(createSingleStat(R.string.trip_distance, trip.distance.toString()))
