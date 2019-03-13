@@ -4,37 +4,15 @@ import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.database.DatabaseUtils
-import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
+import io.requery.android.database.sqlite.SQLiteDatabase
+import io.requery.android.database.sqlite.SQLiteOpenHelper
 import com.greenwald.aaron.ridetracker.model.*
 import java.util.*
 
-private const val DATABASE_VERSION = 14
+private const val DATABASE_VERSION = 29
 private const val DATABASE_NAME = "ride-tracker"
 
 internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
-
-    val trips: ArrayList<Trip>
-        get() {
-            val trips = ArrayList<Trip>()
-
-            val selectQuery = """SELECT  *
-                    FROM $TABLE_TRIPS a LEFT JOIN $TABLE_STATS_TRIPS b
-                        ON a.$COL_ID = b.$COL_TRIP_ID
-                    order by $COL_ID desc""".trimMargin()
-
-            val db = this.readableDatabase
-            val c = db.rawQuery(selectQuery, null)
-
-            if (c.moveToFirst()) {
-                do {
-                    val trip = createTripFromCursor(c)
-                    trips.add(trip)
-                } while (c.moveToNext())
-            }
-
-            return trips
-        }
 
     override fun onCreate(db: SQLiteDatabase) {
 
@@ -43,22 +21,39 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
         db.execSQL(CREATE_TABLE_TRIP_SEGMENTS)
         db.execSQL(CREATE_TABLE_SEGMENT_POINTS)
 
-
-        db.execSQL(CREATE_TABLE_STATS_TRIPS)
-        db.execSQL(CREATE_TABLE_STATS_TRIP_SEGMENTS)
         db.execSQL(CREATE_TABLE_STATS_SEGMENT_POINTS)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_TRIPS")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_TRIP_SEGMENTS")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_SEGMENT_POINTS")
 
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_STATS_TRIPS")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_STATS_TRIP_SEGMENTS")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_STATS_SEGMENT_POINTS")
+        //TODO move the basic stats from ssp to the segment_points table and drop ssp as well
+        if (oldVersion < DATABASE_VERSION) {
+            arrayOf("stats_trip_segments", "stats_trips").forEach { table -> db.execSQL("""DROP TABLE IF EXISTS $table""") }
+        }
 
-        onCreate(db)
+        recreateViews(db)
+
+    }
+
+    fun getTrips(): ArrayList<Trip> {
+        val trips = ArrayList<Trip>()
+
+        val selectQuery = """SELECT  *
+                    FROM $TABLE_TRIPS a LEFT JOIN $VIEW_TRIPS b
+                        ON a.$COL_ID = b.$COL_TRIP_ID
+                    order by $COL_ID desc""".trimMargin()
+
+        val db = this.readableDatabase
+        val c = db.rawQuery(selectQuery, null)
+
+        if (c.moveToFirst()) {
+            do {
+                val trip = createTripFromCursor(c)
+                trips.add(trip)
+            } while (c.moveToNext())
+        }
+
+        return trips
     }
 
     fun insertTrip(trip: Trip): TripId {
@@ -91,6 +86,15 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
         return db.insert(TABLE_TRIP_SEGMENTS, null, values)
     }
 
+    fun updateSegment(id: SegmentId, stoppedTimestamp: Date) {
+        val db = this.writableDatabase
+
+        val values = ContentValues()
+        values.put(COL_SEGMENT_STOPPED_TIMESTAMP, stoppedTimestamp.time)
+
+        db.update(TABLE_TRIP_SEGMENTS, values, "$COL_ID = ?", arrayOf(id.toString()))
+    }
+
     fun insertSegmentPoint(segment: Segment, point: SegmentPoint): SegmentPointId {
         val db = this.writableDatabase
 
@@ -103,15 +107,6 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
         values.put(COL_ACCURACY, point.accuracy)
 
         return db.insert(TABLE_SEGMENT_POINTS, null, values)
-    }
-
-    fun updateSegment(id: SegmentId, stoppedTimestamp: Date) {
-        val db = this.writableDatabase
-
-        val values = ContentValues()
-        values.put(COL_SEGMENT_STOPPED_TIMESTAMP, stoppedTimestamp.time)
-
-        db.update(TABLE_TRIP_SEGMENTS, values, "$COL_ID = ?", arrayOf(id.toString()))
     }
 
     fun insertSegmentPointStats(id: SegmentPointId, distance: Meters, elapsedTime: Milliseconds, altitudeChange: Meters) {
@@ -127,54 +122,14 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
         db.insert(TABLE_STATS_SEGMENT_POINTS, null, values)
     }
 
-    fun insertSegmentStats(id: SegmentId) {
-
-        val db = this.writableDatabase
-
-        val selectQuery = """SELECT
-                SUM(a.$COL_DISTANCE),
-                SUM(a.$COL_ELAPSED_TIME),
-                MIN(b.$COL_ALTITUDE),
-                MAX(b.$COL_ALTITUDE),
-                MIN(a.$COL_SLOPE),
-                MAX(a.$COL_SLOPE),
-                SUM(CASE WHEN a.$COL_ALTITUDE_CHANGE > 0 THEN a.$COL_ALTITUDE_CHANGE ELSE 0 END),
-                SUM(CASE WHEN a.$COL_ALTITUDE_CHANGE < 0 THEN ABS(a.$COL_ALTITUDE_CHANGE) ELSE 0 END),
-                MAX(a.$COL_AVG_SPEED)
-                FROM $TABLE_STATS_SEGMENT_POINTS a
-                    INNER JOIN $TABLE_SEGMENT_POINTS b ON a.$COL_SEGMENT_POINT_ID = b.$COL_ID
-                WHERE b.$COL_TRIP_SEGMENT_ID = $id""".trimMargin()
-
-        val c = db.rawQuery(selectQuery, null)
-        c!!.moveToFirst()
-
-        val distance = c.getDouble(0)
-        val elapsedTime = c.getLong(1)
-
-        val values = ContentValues()
-        values.put(COL_TRIP_SEGMENT_ID, id.toString())
-
-        values.put(COL_DISTANCE, distance)
-        values.put(COL_ELAPSED_TIME, elapsedTime)
-        values.put(COL_MIN_ALTITUDE, c.getDouble(2))
-        values.put(COL_MAX_ALTITUDE, c.getDouble(3))
-        values.put(COL_AVG_SPEED, KilometersPerHour.from(Meters(distance), Milliseconds(elapsedTime)).value)
-        values.put(COL_MAX_SPEED, c.getDouble(8))
-        values.put(COL_MIN_SLOPE, c.getDouble(4))
-        values.put(COL_MAX_SLOPE, c.getDouble(5))
-        values.put(COL_TOTAL_ASCENT, c.getDouble(6))
-        values.put(COL_TOTAL_DESCENT, c.getDouble(7))
-
-        db.insert(TABLE_STATS_TRIP_SEGMENTS, null, values)
-        updateTripStatsForSegment(id)
-    }
-
     fun getTrip(id: TripId): Trip {
         val db = this.readableDatabase
 
-        val selectQuery = """SELECT * FROM $TABLE_TRIPS a
-                LEFT JOIN $TABLE_STATS_TRIPS b ON a.$COL_ID = b.$COL_TRIP_ID
-                WHERE $COL_ID = $id""".trimMargin()
+        val selectQuery = """
+            SELECT *
+            FROM $TABLE_TRIPS t
+                LEFT JOIN $VIEW_TRIPS vt ON t.$COL_ID = vt.$COL_TRIP_ID
+                WHERE t.$COL_ID = $id""".trimMargin()
 
         val c = db.rawQuery(selectQuery, null)
 
@@ -196,63 +151,6 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
         //this is a super dumb way to do this, but "whatever" for now
         val trip = getTrip(id)
         return trip.copy(segments = getSegmentsForTripId(id))
-    }
-
-    private fun updateTripStatsForSegment(id: SegmentId) {
-
-        deleteTripStatsForSegment(id)
-
-        val db = this.writableDatabase
-
-        val selectQuery = """SELECT
-                    SUM(a.$COL_DISTANCE),
-                    SUM(a.$COL_ELAPSED_TIME),
-                    MIN(a.$COL_MIN_ALTITUDE),
-                    MAX(a.$COL_MAX_ALTITUDE),
-                    MIN(a.$COL_MIN_SLOPE),
-                    MAX(a.$COL_MAX_SLOPE),
-                    SUM(a.$COL_TOTAL_ASCENT),
-                    SUM(a.$COL_TOTAL_DESCENT),
-                    MAX(a.$COL_DISTANCE),
-                    MAX(a.$COL_ELAPSED_TIME),
-                    b.$COL_TRIP_ID,
-                    MAX(a.$COL_MAX_SPEED),
-                    MIN(b.$COL_SEGMENT_STARTED_TIMESTAMP),
-                    MAX(b.$COL_SEGMENT_STOPPED_TIMESTAMP)
-                FROM $TABLE_STATS_TRIP_SEGMENTS a
-                    INNER JOIN $TABLE_TRIP_SEGMENTS b ON a.$COL_TRIP_SEGMENT_ID = b.$COL_ID
-                WHERE b.$COL_TRIP_ID IN (SELECT $COL_TRIP_ID FROM $TABLE_TRIP_SEGMENTS WHERE $COL_ID = $id)""".trimMargin()
-
-        val c = db.rawQuery(selectQuery, null)
-        c!!.moveToFirst()
-
-        val values = ContentValues()
-        values.put(COL_TRIP_ID, c.getLong(10))
-
-        val distance = c.getDouble(0)
-        values.put(COL_DISTANCE, distance)
-        values.put(COL_ELAPSED_TIME, c.getLong(13) - c.getLong(12))
-        val elapsedTime = c.getLong(1)
-        values.put(COL_RIDE_TIME, elapsedTime)
-        values.put(COL_MIN_ALTITUDE, c.getString(2))
-        values.put(COL_MAX_ALTITUDE, c.getString(3))
-        values.put(COL_AVG_SPEED, KilometersPerHour.from(Meters(distance), Milliseconds(elapsedTime)).value)
-        values.put(COL_MAX_SPEED, c.getDouble(11))
-        values.put(COL_MIN_SLOPE, c.getString(4))
-        values.put(COL_MAX_SLOPE, c.getString(5))
-        values.put(COL_TOTAL_ASCENT, c.getString(6))
-        values.put(COL_TOTAL_DESCENT, c.getString(7))
-        values.put(COL_MAX_TRIP_SEGMENT_DISTANCE, c.getString(8))
-        values.put(COL_MAX_TRIP_SEGMENT_ELAPSED_TIME, c.getString(9))
-
-        db.insert(TABLE_STATS_TRIPS, null, values)
-    }
-
-    private fun deleteTripStatsForSegment(id: SegmentId) {
-        val db = this.writableDatabase
-        val where = """$COL_TRIP_ID IN
-                (SELECT $COL_TRIP_ID FROM $TABLE_TRIP_SEGMENTS WHERE $COL_ID = ?) """.trimMargin()
-        db.delete(TABLE_STATS_TRIPS, where, arrayOf(id.toString()))
     }
 
     private fun getSegmentsForTripId(tripId: TripId): ArrayList<Segment> {
@@ -307,24 +205,36 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
     )
 
 
-    private fun createTripFromCursor(cursor: Cursor?) = Trip(
-            name = cursor!!.getString(cursor.getColumnIndex(COL_TRIP_NAME)),
-            id = cursor.getLong(cursor.getColumnIndex(COL_ID)),
-            distance = Kilometers((cursor.getDouble(cursor.getColumnIndex(COL_DISTANCE)) / 1000.0).toDouble()),
-            elapsedTime = Milliseconds(cursor.getLong(cursor.getColumnIndex(COL_ELAPSED_TIME))),
-            ridingTime = Milliseconds(cursor.getLong(cursor.getColumnIndex(COL_RIDE_TIME))),
-            maxAltitude = Meters(cursor.getDouble(cursor.getColumnIndex(COL_MAX_ALTITUDE))),
-            minAltitude = Meters(cursor.getDouble(cursor.getColumnIndex(COL_MIN_ALTITUDE))),
-            maxSpeed = KilometersPerHour(cursor.getDouble(cursor.getColumnIndex(COL_MAX_SPEED)))
-    )
+    private fun createTripFromCursor(cursor: Cursor?): Trip {
+        return Trip(
+                name = cursor!!.getString(cursor.getColumnIndex(COL_TRIP_NAME)),
+                id = cursor.getLong(cursor.getColumnIndex(COL_ID)),
+                distance = Kilometers((cursor.getDouble(cursor.getColumnIndex(COL_DISTANCE)) / 1000.0).toDouble()),
+                elapsedTime = Milliseconds(cursor.getLong(cursor.getColumnIndex(COL_ELAPSED_TIME))),
+                ridingTime = Milliseconds(cursor.getLong(cursor.getColumnIndex(COL_RIDE_TIME))),
+                maxAltitude = Meters(cursor.getDouble(cursor.getColumnIndex(COL_MAX_ALTITUDE))),
+                minAltitude = Meters(cursor.getDouble(cursor.getColumnIndex(COL_MIN_ALTITUDE))),
+                maxSpeed = KilometersPerHour(cursor.getDouble(cursor.getColumnIndex(COL_MAX_SPEED)))
+        )
+    }
 
 
+    private fun recreateViews(db: SQLiteDatabase) {
+        arrayOf(VIEW_TRIPS, VIEW_SEGMENTS, VIEW_SEGMENT_POINTS).forEach { view -> db.execSQL("""DROP VIEW IF EXISTS $view""") }
+        db.execSQL(CREATE_VIEW_SEGMENT_POINTS)
+        db.execSQL(CREATE_VIEW_SEGMENTS)
+        db.execSQL(CREATE_VIEW_TRIPS)
+    }
+
+    private val SPEED_SMOOTH_FACTOR = 5
     private val TABLE_TRIPS = "trips"
     private val TABLE_TRIP_SEGMENTS = "trip_segments"
     private val TABLE_SEGMENT_POINTS = "segment_points"
     private val TABLE_STATS_SEGMENT_POINTS = "stats_segment_points"
-    private val TABLE_STATS_TRIP_SEGMENTS = "stats_trip_segments"
-    private val TABLE_STATS_TRIPS = "stats_trips"
+
+    private val VIEW_SEGMENT_POINTS = "v_segment_points"
+    private val VIEW_TRIPS = "v_trips"
+    private val VIEW_SEGMENTS = "v_segments"
 
     private val COL_ID = "id"
 
@@ -362,13 +272,13 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
 
     private val CREATE_TABLE_TRIPS = """CREATE TABLE $TABLE_TRIPS(
             $COL_ID INTEGER PRIMARY KEY,
-            $COL_TRIP_NAME TEXT )"""
+            $COL_TRIP_NAME TEXT )""".trimMargin()
 
     private val CREATE_TABLE_TRIP_SEGMENTS = """CREATE TABLE $TABLE_TRIP_SEGMENTS (
             $COL_ID INTEGER PRIMARY KEY,
             $COL_TRIP_ID INTEGER,
             $COL_SEGMENT_STARTED_TIMESTAMP DATETIME,
-            $COL_SEGMENT_STOPPED_TIMESTAMP DATETIME)"""
+            $COL_SEGMENT_STOPPED_TIMESTAMP DATETIME)""".trimMargin()
 
     private val CREATE_TABLE_SEGMENT_POINTS = """CREATE TABLE $TABLE_SEGMENT_POINTS(
             $COL_ID INTEGER PRIMARY KEY,
@@ -377,7 +287,7 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
             $COL_LATITUDE DOUBLE,
             $COL_LONGITUDE DOUBLE,
             $COL_ALTITUDE INTEGER,
-            $COL_ACCURACY INTEGER)"""
+            $COL_ACCURACY INTEGER)""".trimMargin()
 
     private val CREATE_TABLE_STATS_SEGMENT_POINTS = """CREATE TABLE $TABLE_STATS_SEGMENT_POINTS(
             $COL_SEGMENT_POINT_ID INTEGER UNIQUE,
@@ -386,38 +296,83 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
             $COL_ALTITUDE_CHANGE DOUBLE,
             $COL_SLOPE DOUBLE,
             $COL_AVG_SPEED DOUBLE,
-            FOREIGN KEY($COL_SEGMENT_POINT_ID) REFERENCES $TABLE_SEGMENT_POINTS($COL_ID))"""
+            FOREIGN KEY($COL_SEGMENT_POINT_ID) REFERENCES $TABLE_SEGMENT_POINTS($COL_ID))""".trimMargin()
 
-    private val CREATE_TABLE_STATS_TRIP_SEGMENTS = """CREATE TABLE $TABLE_STATS_TRIP_SEGMENTS(
-            $COL_TRIP_SEGMENT_ID INTEGER UNIQUE,
-            $COL_DISTANCE DOUBLE,
-            $COL_ELAPSED_TIME DOUBLE,
-            $COL_AVG_SPEED DOUBLE,
-            $COL_MAX_SPEED DOUBLE,
-            $COL_MIN_ALTITUDE DOUBLE,
-            $COL_MAX_ALTITUDE DOUBLE,
-            $COL_MIN_SLOPE DOUBLE,
-            $COL_MAX_SLOPE DOUBLE,
-            $COL_TOTAL_ASCENT DOUBLE,
-            $COL_TOTAL_DESCENT DOUBLE,
-            FOREIGN KEY($COL_TRIP_SEGMENT_ID) REFERENCES $TABLE_TRIP_SEGMENTS($COL_ID))"""
+    private val CREATE_VIEW_SEGMENT_POINTS = """
+        create view $VIEW_SEGMENT_POINTS as
 
-    private val CREATE_TABLE_STATS_TRIPS = """CREATE TABLE $TABLE_STATS_TRIPS(
-            $COL_TRIP_ID INTEGER UNIQUE,
-            $COL_DISTANCE DOUBLE,
-            $COL_ELAPSED_TIME DOUBLE,
-            $COL_RIDE_TIME DOUBLE,
-            $COL_AVG_SPEED DOUBLE,
-            $COL_MAX_SPEED DOUBLE,
-            $COL_MIN_ALTITUDE DOUBLE,
-            $COL_MAX_ALTITUDE DOUBLE,
-            $COL_MIN_SLOPE DOUBLE,
-            $COL_MAX_SLOPE DOUBLE,
-            $COL_TOTAL_ASCENT DOUBLE,
-            $COL_TOTAL_DESCENT DOUBLE,
-            $COL_MAX_TRIP_SEGMENT_DISTANCE DOUBLE,
-            $COL_MAX_TRIP_SEGMENT_ELAPSED_TIME DOUBLE,
-            FOREIGN KEY($COL_TRIP_ID) REFERENCES $TABLE_TRIPS($COL_ID))"""
+        with smoothed as (
+        select ts.trip_id
+            , sp.trip_segment_id
+            , sp.id segment_point_id
+            , sp.timestamp
+            , sp.latitude
+            , sp.longitude
+            , ssp.elapsed_time
+            , ssp.distance
+            , ssp.distance / (ssp.elapsed_time / 3600)  as speed
+            , sum(distance) over (order by sp.id rows between $SPEED_SMOOTH_FACTOR PRECEDING and 0 FOLLOWING) adj_distance
+            , sum(elapsed_time) over (order by sp.id rows between $SPEED_SMOOTH_FACTOR PRECEDING and 0 FOLLOWING) adj_time
+        from trip_segments ts
+            inner join segment_points sp on ts.id = sp.trip_segment_id
+            inner join stats_segment_points ssp on sp.id = ssp.segment_point_id
+        )
+        select *
+            , adj_distance * 3600 / adj_time adj_speed from smoothed;
+    """.trimIndent()
+
+    private val CREATE_VIEW_SEGMENTS = """
+        create view $VIEW_SEGMENTS as
+
+        select
+            vsp.trip_segment_id,
+            SUM(vsp.distance) distance,
+            SUM(vsp.elapsed_time) elapsed_time,
+            MIN(sp.altitude) min_altitude,
+            MAX(sp.altitude) max_altitude,
+            MIN(ssp.slope) min_slope,
+            MAX(ssp.slope) max_slope,
+            SUM(CASE WHEN ssp.altitude_change > 0 THEN ssp.altitude_change ELSE 0 END) total_ascent,
+            SUM(CASE WHEN ssp.altitude_change < 0 THEN ABS(ssp.altitude_change) ELSE 0 END) total_descent,
+            MAX(vsp.adj_speed) max_speed
+        from v_segment_points vsp
+            inner join stats_segment_points ssp on vsp.segment_point_id = ssp.segment_point_id
+            inner join segment_points sp ON vsp.segment_point_id = sp.id
+        group by vsp.trip_segment_id
+    """.trimIndent()
+
+    //TODO: if querying for a specific tripId,
+    // inlining the queries instead of views
+    // makes  this about 4x faster because you can put the where before the
+    // expensive calculations!!
+    //if querying all at once, it probably doesn't matter
+    //TVFs would be nice.
+    //another option is to persist this data
+    private val CREATE_VIEW_TRIPS = """
+
+    create view $VIEW_TRIPS as
+
+    SELECT
+        ts.trip_id,
+        SUM(vs.distance) distance,
+        MAX(ts.stopped_time) - MIN(ts.started_time) elapsed_time,
+        SUM(vs.elapsed_time) ride_time,
+        MAX(vs.max_speed) max_speed,
+        MIN(vs.min_altitude) min_altitude,
+        MAX(vs.max_altitude) max_altitude,
+        MIN(vs.$COL_MIN_SLOPE) $COL_MIN_SLOPE,
+        MIN(vs.$COL_MAX_SLOPE) $COL_MAX_SLOPE,
+        SUM(vs.$COL_TOTAL_ASCENT) $COL_TOTAL_ASCENT,
+        SUM(vs.$COL_TOTAL_DESCENT) $COL_TOTAL_DESCENT,
+        MAX(vs.$COL_DISTANCE) $COL_MAX_TRIP_SEGMENT_DISTANCE,
+        MAX(vs.$COL_ELAPSED_TIME) $COL_MAX_TRIP_SEGMENT_ELAPSED_TIME,
+        MIN(ts.started_time) started_time,
+        MAX(ts.stopped_time) stopped_time
+    FROM $VIEW_SEGMENTS vs
+        INNER JOIN trip_segments ts ON vs.trip_segment_id = ts.id
+    group by ts.trip_id;
+
+    """.trimIndent()
 
 }
 

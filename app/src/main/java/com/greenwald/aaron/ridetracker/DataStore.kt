@@ -10,7 +10,7 @@ internal class DataStore(context: Context) {
     private val db: DatabaseHelper = DatabaseHelper(context)
 
     val trips: ArrayList<Trip>
-        get() = db.trips
+        get() = db.getTrips()
 
     fun createTrip(name: String): Trip {
         val trip = Trip(name)
@@ -26,7 +26,6 @@ internal class DataStore(context: Context) {
 
     fun stopTripSegment(segment: Segment) {
         db.updateSegment(segment.id, Date())
-        db.insertSegmentStats(segment.id)
     }
 
     fun recordSegmentPoint(segment: Segment, point: SegmentPoint) {
