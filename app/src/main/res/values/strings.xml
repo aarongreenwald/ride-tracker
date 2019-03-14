@@ -27,4 +27,9 @@
     <string name="channel_description">the channel description</string>
     <string name="credits">Icons by Freepik from www.flaticon.com</string>
     <string name="creditsTitle">Credits</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="editTrip">Edit Trip</string>
+    <string name="createNewTrip">Create New Trip</string>
+    <string name="create">Create</string>
 </resources>

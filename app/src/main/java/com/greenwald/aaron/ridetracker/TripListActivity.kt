@@ -9,17 +9,25 @@ import android.support.v7.app.AppCompatActivity
 import android.support.v7.widget.RecyclerView
 import android.support.v7.widget.Toolbar
 import android.text.InputType
+import android.view.*
 import android.widget.EditText
+import android.support.v7.view.ActionMode;
 
 import com.greenwald.aaron.ridetracker.model.Trip
 import java.text.SimpleDateFormat
 
 import java.util.Date
 
-class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInteractionListener {
+class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInteractionListener    {
+
+    private var actionMode: Boolean = false
+    private var selectedTrips: MutableList<Trip> = mutableListOf()
+    private lateinit var menu: Menu
+    private lateinit var mode: ActionMode
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContentView(R.layout.activity_trip_list)
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         toolbar.setOnClickListener { showCredits() }
@@ -35,19 +43,70 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
     }
 
     override fun onTripPress(trip: Trip) {
-        openTripActivity(trip)
+        if (actionMode) {
+            toggleTripSelection(trip)
+        } else {
+            openTripActivity(trip)
+        }
     }
 
     override fun onTripLongPress(trip: Trip): Boolean {
-        renameTrip(trip)
+
+        if (!actionMode)
+            startSupportActionMode(this)
+
+        toggleTripSelection(trip)
         return true
+    }
+
+    override fun onSupportActionModeStarted(mode: ActionMode) {
+        super.onSupportActionModeStarted(mode)
+        actionMode = true
+    }
+
+    private fun toggleTripSelection(trip: Trip) {
+        if (selectedTrips.contains(trip)) {
+            selectedTrips.remove(trip)
+        } else {
+            selectedTrips.add(trip)
+        }
+
+        menu.getItem(0).isVisible = selectedTrips.size <= 1
+        if (selectedTrips.isEmpty())
+            mode.finish()
 
     }
 
+    override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
+        val inflater: MenuInflater = mode.menuInflater
+        inflater.inflate(R.menu.trip_list_menu, menu)
+        this.menu = menu
+        this.mode = mode
+        return true
+    }
+
+    override fun onPrepareActionMode(mode: ActionMode, menu: Menu) = false
+
+    override fun onActionItemClicked(mode: ActionMode, item: MenuItem) =
+        when (item.itemId) {
+            R.id.editTrip -> {
+                renameTrip(selectedTrips.get(0))
+                mode.finish()
+                true
+            }
+            else -> false
+        }
+
+
+    override fun onDestroyActionMode(mode: ActionMode) {
+        selectedTrips.clear()
+        actionMode = false
+    }
+
     private fun createNewTrip() {
-        showTripDialog(title = "Create New Trip",
+        showTripDialog(title = getString(R.string.createNewTrip),
                 inputText = SimpleDateFormat("yyyy-MM-dd").format(Date()),
-                confirmCta = "Create",
+                confirmCta = getString(R.string.create),
                 confirmAction = { input -> { _, _ ->
                     val text = input.text.toString()
                     createTripAndOpenActivity(text)
@@ -62,9 +121,9 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
     }
 
     private fun renameTrip(trip: Trip) {
-        showTripDialog(title = "Edit Trip",
+        showTripDialog(title = getString(R.string.editTrip),
                 inputText = trip.name,
-                confirmCta = "Save",
+                confirmCta = getString(R.string.save),
                 confirmAction = { input -> { _, _ ->
                     val newName = input.text.toString()
                     saveTripName(trip, newName)
@@ -80,7 +139,7 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
 
         val ds = DataStore(this.applicationContext)
         val trips = ds.trips
-        rv.adapter = TripRecyclerViewAdapter(trips, this, rv)
+        rv.adapter = TripRecyclerViewAdapter(trips,this)
 
         rv.getLayoutManager()?.onRestoreInstanceState(savedScrollPosition);
     }
@@ -108,7 +167,7 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
         input.inputType = InputType.TYPE_CLASS_TEXT
         builder.setView(input)
         builder.setPositiveButton(confirmCta, confirmAction(input))
-        builder.setNegativeButton("Cancel") { dialog, _ -> dialog.cancel() }
+        builder.setNegativeButton(getString(R.string.cancel)) { dialog, _ -> dialog.cancel() }
         builder.show()
     }
 }
