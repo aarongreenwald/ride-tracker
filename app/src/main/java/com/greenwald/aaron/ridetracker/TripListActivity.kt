@@ -93,6 +93,7 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
     private fun openTripActivity(trip: Trip) {
         val intent = Intent(this@TripListActivity, TripActivity::class.java)
         intent.putExtra("tripId", trip.id)
+        intent.putExtra("tripName", trip.name)
         startActivity(intent)
     }
 

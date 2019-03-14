@@ -2,7 +2,6 @@ package com.greenwald.aaron.ridetracker
 
 import android.content.Context
 import com.greenwald.aaron.ridetracker.model.*
-import java.time.Instant
 import java.util.*
 
 internal class DataStore(context: Context) {

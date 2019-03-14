@@ -59,6 +59,7 @@ class LocationTrackingService : Service() {
 
         val intent = Intent(this, TripActivity::class.java)
         intent.putExtra("tripId", tripId)
+        intent.putExtra("tripName", trip.name)
         val pendingIntent = PendingIntent.getActivity(this, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT)
 
         val notification = Notification.Builder(this)

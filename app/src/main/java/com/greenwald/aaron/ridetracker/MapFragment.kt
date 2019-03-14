@@ -3,10 +3,12 @@ package com.greenwald.aaron.ridetracker
 //https://gist.github.com/joshdholtz/4522551
 
 import android.Manifest
+import android.app.Activity
 import android.app.AlertDialog
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.os.AsyncTask
 import android.os.Bundle
 import android.support.v4.app.ActivityCompat
 import android.support.v4.app.Fragment
@@ -35,57 +37,73 @@ class MapFragment : Fragment() {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         intentFilter.addAction("LOCATION_CHANGED")
 
-        val ds = DataStore(activity!!.applicationContext)
-        val trip =  ds.getTripWithDetails(arguments!!.getLong("tripId"))
-
-        val segmentPolylines: List<Pair<SegmentId, PolylineOptions>> = trip.segments.map { segment ->
-            val locations = segment.segmentPoints.map(SegmentPoint::latLng)
-
-            val speedFactor = segment.maxSpeed.value / trip.maxSpeed.value
-            val polyline = PolylineOptions()
-            val colorCode = colorForSpeedFactor(speedFactor)
-            polyline.color(Color.parseColor(colorCode))
-            polyline.jointType(JointType.ROUND)
-            polyline.clickable(true)
-            polyline.addAll(locations)
-            Pair(segment.id, polyline)
-        }
-
         val view = inflater.inflate(R.layout.fragment_map, container, false)
         mapView = view.findViewById(R.id.mapView)
         mapView.onCreate(savedInstanceState)
 
-        mapView.getMapAsync(OnMapReadyCallback { googleMap ->
-            map = googleMap
-            if (ActivityCompat.checkSelfPermission(context!!,
-                            Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context!!,
-                            Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                return@OnMapReadyCallback
-            }
-            map.isMyLocationEnabled = true
-            map.uiSettings.setAllGesturesEnabled(true)
-            map.uiSettings.isZoomControlsEnabled = true
-            map.uiSettings.isMyLocationButtonEnabled = true
+        updateData(activity!!)
 
-            segmentPolylines.forEach { segment ->
-                map.addPolyline(segment.second).tag = segment.first
-            }
-
-            map.setOnPolylineClickListener { polyline ->
-                val segment = ds.getSegment(polyline.tag as SegmentId).toString()
-                showSegmentDialog(segment)
-            }
-
-            val builder = LatLngBounds.builder()
-            val locations = trip.getAllPoints()
-            if (locations.isNotEmpty()) {
-                locations.forEach { latLng -> builder.include(latLng) }
-                map.moveCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 200))
-            }
-        })
-
-        MapsInitializer.initialize(this.activity!!)
         return view
+    }
+
+    private fun updateData(activity: Activity) {
+        AsyncTask.execute {
+            val ds = DataStore(activity.applicationContext)
+            val trip = ds.getTripWithDetails(arguments!!.getLong("tripId"))
+
+            val segmentPolylines: List<Pair<SegmentId, PolylineOptions>> = trip.segments.map { segment ->
+                val locations = segment.segmentPoints.map(SegmentPoint::latLng)
+
+                val speedFactor = segment.maxSpeed.value / trip.maxSpeed.value
+                val polyline = PolylineOptions()
+                val colorCode = colorForSpeedFactor(speedFactor)
+                polyline.color(Color.parseColor(colorCode))
+                polyline.jointType(JointType.ROUND)
+                polyline.clickable(true)
+                polyline.addAll(locations)
+                Pair(segment.id, polyline)
+            }
+
+            activity.runOnUiThread {
+                mapView.getMapAsync(OnMapReadyCallback { googleMap ->
+                    map = googleMap
+                    if (ActivityCompat.checkSelfPermission(context!!,
+                                    Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(context!!,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        return@OnMapReadyCallback
+                    }
+                    map.isMyLocationEnabled = true
+                    map.uiSettings.setAllGesturesEnabled(true)
+                    map.uiSettings.isZoomControlsEnabled = true
+                    map.uiSettings.isMyLocationButtonEnabled = true
+
+                    segmentPolylines.forEach { segment ->
+                        map.addPolyline(segment.second).tag = segment.first
+                    }
+
+                    map.setOnPolylineClickListener { polyline ->
+                        val segment = ds.getSegment(polyline.tag as SegmentId).toString()
+                        showSegmentDialog(segment)
+                    }
+
+                    val builder = LatLngBounds.builder()
+                    val locations = trip.getAllPoints()
+                    if (locations.isNotEmpty()) {
+                        locations.forEach { latLng -> builder.include(latLng) }
+                        map.moveCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 200))
+                    }
+                })
+
+                MapsInitializer.initialize(this.activity!!)
+            }
+
+
+        }
+    }
+
+    override fun onAttach(activity: Activity?) {
+        super.onAttach(activity)
+        (activity as TripActivity).onDataUpdated { tripActivity -> updateData(tripActivity) }
     }
 
     private fun colorForSpeedFactor(speedFactor: Double): String {
