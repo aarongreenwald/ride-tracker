@@ -42,20 +42,20 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
         startActivity(intent)
     }
 
-    override fun onTripPress(trip: Trip) {
+    override fun onTripPress(tripListItem: TripListItem) {
         if (actionMode) {
-            toggleTripSelection(trip)
+            toggleTripSelection(tripListItem)
         } else {
-            openTripActivity(trip)
+            openTripActivity(tripListItem.trip)
         }
     }
 
-    override fun onTripLongPress(trip: Trip): Boolean {
+    override fun onTripLongPress(tripListItem: TripListItem): Boolean {
 
         if (!actionMode)
             startSupportActionMode(this)
 
-        toggleTripSelection(trip)
+        toggleTripSelection(tripListItem)
         return true
     }
 
@@ -64,18 +64,24 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
         actionMode = true
     }
 
-    private fun toggleTripSelection(trip: Trip) {
-        if (selectedTrips.contains(trip)) {
-            selectedTrips.remove(trip)
+    private fun toggleTripSelection(tripListItem: TripListItem) {
+        tripListItem.selected = !tripListItem.selected
+        if (selectedTrips.contains(tripListItem.trip)) {
+            selectedTrips.remove(tripListItem.trip)
         } else {
-            selectedTrips.add(trip)
+            selectedTrips.add(tripListItem.trip)
         }
 
-        menu.getItem(0).isVisible = selectedTrips.size <= 1
+        val rv = this.findViewById<RecyclerView>(R.id.list)
+        rv.adapter?.notifyDataSetChanged()
+
+        editButton().isVisible = selectedTrips.size <= 1
         if (selectedTrips.isEmpty())
             mode.finish()
 
     }
+
+    private fun editButton() = menu.getItem(0)
 
     override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
         val inflater: MenuInflater = mode.menuInflater
@@ -139,7 +145,7 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
 
         val ds = DataStore(this.applicationContext)
         val trips = ds.trips
-        rv.adapter = TripRecyclerViewAdapter(trips,this)
+        rv.adapter = TripRecyclerViewAdapter(trips.map {trip -> TripListItem(trip, false)},this)
 
         rv.getLayoutManager()?.onRestoreInstanceState(savedScrollPosition);
     }
@@ -171,3 +177,4 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
         builder.show()
     }
 }
+data class TripListItem(val trip: Trip, var selected: Boolean)

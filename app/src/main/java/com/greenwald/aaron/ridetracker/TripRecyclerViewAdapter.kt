@@ -1,15 +1,16 @@
 package com.greenwald.aaron.ridetracker
 
+import android.graphics.Color
 import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import com.greenwald.aaron.ridetracker.TripListFragment.OnListFragmentInteractionListener
-import com.greenwald.aaron.ridetracker.model.Trip
 
-class TripRecyclerViewAdapter internal constructor(private val trips: List<Trip>,
+class TripRecyclerViewAdapter internal constructor(private val tripItems: List<TripListItem>,
                                                    private val interactionListener: OnListFragmentInteractionListener?) :
         RecyclerView.Adapter<TripViewHolder>() {
 
@@ -21,7 +22,8 @@ class TripRecyclerViewAdapter internal constructor(private val trips: List<Trip>
     }
 
     override fun onBindViewHolder(holder: TripViewHolder, position: Int) {
-        val trip = trips[position]
+        val tripItem = tripItems[position]
+        val trip = tripItem.trip
 
         holder.tripRunningIndicator.visibility = if (LocationTrackingService.recordingTripId == trip.id)
             View.VISIBLE else View.GONE
@@ -29,12 +31,13 @@ class TripRecyclerViewAdapter internal constructor(private val trips: List<Trip>
         holder.nameTextView.text = trip.name
         holder.distanceTextView.text = trip.distance.toString()
         holder.tripTimeTextView.text = trip.elapsedTime.toString()
+        holder.container.setBackgroundColor(if (tripItems[position].selected) Color.LTGRAY else Color.WHITE)
 
-        holder.view.setOnClickListener { _ -> interactionListener!!.onTripPress(trip) }
-        holder.view.setOnLongClickListener { _ -> interactionListener!!.onTripLongPress(trip) }
+        holder.view.setOnClickListener { _ -> interactionListener!!.onTripPress(tripItem) }
+        holder.view.setOnLongClickListener { _ -> interactionListener!!.onTripLongPress(tripItem) }
     }
 
-    override fun getItemCount() = trips.size
+    override fun getItemCount() = tripItems.size
 
 }
 
@@ -43,6 +46,7 @@ class TripViewHolder(val view: View) : RecyclerView.ViewHolder(view) {
     val distanceTextView: TextView = view.findViewById(R.id.tripDistance)
     val tripTimeTextView = view.findViewById<TextView>(R.id.tripTime)
     val tripRunningIndicator = view.findViewById<ProgressBar>(R.id.tripRunningIndicator)
+    val container = view.findViewById<LinearLayout>(R.id.list_item)
 
     override fun toString(): String = "${super.toString()} '${nameTextView.text}'"
 }

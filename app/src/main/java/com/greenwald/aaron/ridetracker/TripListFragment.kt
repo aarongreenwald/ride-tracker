@@ -35,7 +35,7 @@ class TripListFragment : Fragment() {
         val ds = DataStore(context)
         val trips = ds.trips
         val rv = view.findViewById<RecyclerView>(R.id.list)
-        rv.adapter = TripRecyclerViewAdapter(trips, listener)
+        rv.adapter = TripRecyclerViewAdapter(trips.map { trip -> TripListItem(trip, false) }, listener)
         rv.scrollToPosition(0)
     }
 
@@ -55,7 +55,7 @@ class TripListFragment : Fragment() {
     }
 
     interface OnListFragmentInteractionListener: ActionMode.Callback {
-        fun onTripPress(trip: Trip)
-        fun onTripLongPress(trip: Trip): Boolean
+        fun onTripPress(tripListItem: TripListItem)
+        fun onTripLongPress(tripListItem: TripListItem): Boolean
     }
 }

@@ -9,33 +9,6 @@
         android:layout_height="match_parent">
 
         <LinearLayout
-            android:id="@+id/listActions"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="end">
-
-            <Button
-                android:id="@+id/editTrip"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:background="@android:color/holo_green_dark"
-                android:paddingLeft="20dp"
-                android:paddingRight="20dp"
-                android:text="Edit"
-
-                />
-
-            <Button
-                android:id="@+id/deleteTrip"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:background="@android:color/holo_red_dark"
-                android:paddingLeft="20dp"
-                android:paddingRight="20dp"
-                android:text="Delete" />
-        </LinearLayout>
-
-        <LinearLayout
             android:id="@+id/list_item"
             android:layout_width="match_parent"
             android:layout_height="100dp"
