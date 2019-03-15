@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<xsd:schema targetNamespace="ridetracker"
+    elementFormDefault="qualified"
+    xmlns="ridetracker"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+
+    <xsd:annotation><xsd:documentation>
+        RideTracker extensions
+    </xsd:documentation></xsd:annotation>
+
+
+    <xsd:element name="segment" type="segment" />
+
+    <xsd:complexType name="segment">
+        <xsd:annotation><xsd:documentation>
+           Segment data
+        </xsd:documentation></xsd:annotation>
+        <xsd:attribute name="started" type="xsd:dateTime" use="required"/>
+        <xsd:attribute name="stopped" type="xsd:dateTime" />
+    </xsd:complexType>
+
+
+</xsd:schema>
