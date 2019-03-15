@@ -15,18 +15,20 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
 
     override fun onCreate(db: SQLiteDatabase) {
 
-        db.execSQL("PRAGMA foreign_keys = ON;")
+        turnOnForeignKeySupport(db)
         db.execSQL(CREATE_TABLE_TRIPS)
         db.execSQL(CREATE_TABLE_TRIP_SEGMENTS)
         db.execSQL(CREATE_TABLE_SEGMENT_POINTS)
 
         db.execSQL(CREATE_TABLE_STATS_SEGMENT_POINTS)
+
+        recreateViews(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
 
         //TODO move the basic stats from ssp to the segment_points table and drop ssp as well
-        if (oldVersion < DATABASE_VERSION) {
+        if (oldVersion < 20) {
             arrayOf("stats_trip_segments", "stats_trips").forEach { table -> db.execSQL("""DROP TABLE IF EXISTS $table""") }
         }
 
@@ -34,15 +36,24 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
 
     }
 
-    fun getTrips(): ArrayList<Trip> {
+    private fun <T>withDatabase(func: (db: SQLiteDatabase) -> T): T {
+        val db = this.writableDatabase
+        turnOnForeignKeySupport(db)
+
+        val result = func(db)
+
+        db.close()
+        return result
+    }
+
+    fun getTrips(): ArrayList<Trip> = withDatabase { db ->
         val trips = ArrayList<Trip>()
 
         val selectQuery = """SELECT  *
-                    FROM $TABLE_TRIPS a LEFT JOIN $VIEW_TRIPS b
-                        ON a.$COL_ID = b.$COL_TRIP_ID
-                    order by $COL_ID desc""".trimMargin()
+                FROM $TABLE_TRIPS a LEFT JOIN $VIEW_TRIPS b
+                    ON a.$COL_ID = b.$COL_TRIP_ID
+                order by $COL_ID desc""".trimMargin()
 
-        val db = this.readableDatabase
         val c = db.rawQuery(selectQuery, null)
 
         if (c.moveToFirst()) {
@@ -51,100 +62,110 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
                 trips.add(trip)
             } while (c.moveToNext())
         }
-        db.close()
-
-        return trips
+        trips
     }
 
     fun insertTrip(trip: Trip): TripId {
-        val db = this.writableDatabase
-
-        val values = ContentValues()
-        values.put(COL_TRIP_NAME, trip.name)
-        val tripId = db.insert(TABLE_TRIPS, null, values)
-        db.close()
-        return tripId
-
+        return withDatabase { db ->
+            val values = ContentValues()
+            values.put(COL_TRIP_NAME, trip.name)
+            val tripId = db.insert(TABLE_TRIPS, null, values)
+            tripId
+        }
     }
 
     fun updateTripName(id: TripId, newName: String) {
-        val db = this.writableDatabase
+        withDatabase { db ->
+            val values = ContentValues()
+            values.put(COL_TRIP_NAME, newName)
 
-        val values = ContentValues()
-        values.put(COL_TRIP_NAME, newName)
+            db.update(TABLE_TRIPS, values, "$COL_ID = ?",
+                    arrayOf(id.toString()))
 
-        db.update(TABLE_TRIPS, values, "$COL_ID = ?",
-                arrayOf(id.toString()))
-        db.close()
+        }
+    }
 
+    fun deleteTrip(ids: Array<TripId>) {
+        withDatabase { db ->
+            val idsAsStrings = ids.map { id -> id.toString() }.toTypedArray()
+            val inList = ids.map { id -> "?" }.toTypedArray().joinToString (  "," )
+            turnOnForeignKeySupport(db)
+            db.delete(TABLE_TRIPS, "$COL_ID in ($inList)", idsAsStrings)
+        }
+    }
+
+    fun mergeTrips(from: Array<TripId>, to: TripId) {
+        withDatabase { db ->
+            val idsAsStrings = from.map { id -> id.toString() }.toTypedArray()
+            val inList = from.map { id -> "?" }.toTypedArray().joinToString (  "," )
+            val values = ContentValues()
+            values.put(COL_TRIP_ID, to)
+            db.update(TABLE_TRIP_SEGMENTS, values, "$COL_TRIP_ID in ($inList)", idsAsStrings)
+            turnOnForeignKeySupport(db)
+            deleteTrip(from)
+        }
     }
 
     fun insertSegment(trip: Trip, segment: Segment): SegmentId {
-        val db = this.writableDatabase
+        return withDatabase { db ->
+            val values = ContentValues()
+            values.put(COL_TRIP_ID, trip.id)
+            values.put(COL_SEGMENT_STARTED_TIMESTAMP, segment.startedTimestamp.time)
 
-        val values = ContentValues()
-        values.put(COL_TRIP_ID, trip.id)
-        values.put(COL_SEGMENT_STARTED_TIMESTAMP, segment.startedTimestamp.time)
-
-        val segmentId = db.insert(TABLE_TRIP_SEGMENTS, null, values)
-        db.close()
-        return segmentId
+            db.insert(TABLE_TRIP_SEGMENTS, null, values)
+        }
     }
 
     fun updateSegment(id: SegmentId, stoppedTimestamp: Date) {
-        val db = this.writableDatabase
+        withDatabase { db->
+            val values = ContentValues()
+            values.put(COL_SEGMENT_STOPPED_TIMESTAMP, stoppedTimestamp.time)
 
-        val values = ContentValues()
-        values.put(COL_SEGMENT_STOPPED_TIMESTAMP, stoppedTimestamp.time)
-
-        db.update(TABLE_TRIP_SEGMENTS, values, "$COL_ID = ?", arrayOf(id.toString()))
-        db.close()
+            db.update(TABLE_TRIP_SEGMENTS, values, "$COL_ID = ?", arrayOf(id.toString()))
+        }
     }
 
     fun insertSegmentPoint(segment: Segment, point: SegmentPoint): SegmentPointId {
-        val db = this.writableDatabase
+        return withDatabase { db ->
+            val values = ContentValues()
+            values.put(COL_TRIP_SEGMENT_ID, segment.id)
+            values.put(COL_TIMESTAMP, point.dateTime.toString())
+            values.put(COL_LATITUDE, point.latitude)
+            values.put(COL_LONGITUDE, point.longitude)
+            values.put(COL_ALTITUDE, point.altitude.value)
+            values.put(COL_ACCURACY, point.accuracy)
 
-        val values = ContentValues()
-        values.put(COL_TRIP_SEGMENT_ID, segment.id)
-        values.put(COL_TIMESTAMP, point.dateTime.toString())
-        values.put(COL_LATITUDE, point.latitude)
-        values.put(COL_LONGITUDE, point.longitude)
-        values.put(COL_ALTITUDE, point.altitude.value)
-        values.put(COL_ACCURACY, point.accuracy)
-
-        val segmentPointId = db.insert(TABLE_SEGMENT_POINTS, null, values)
-        db.close()
-        return segmentPointId
+            db.insert(TABLE_SEGMENT_POINTS, null, values)
+        }
     }
 
     fun insertSegmentPointStats(id: SegmentPointId, distance: Meters, elapsedTime: Milliseconds, altitudeChange: Meters) {
-        val db = this.writableDatabase
-        val values = ContentValues()
-        values.put(COL_SEGMENT_POINT_ID, id.toString())
-        values.put(COL_DISTANCE, distance.value)
-        values.put(COL_ELAPSED_TIME, elapsedTime.value)
-        values.put(COL_AVG_SPEED, KilometersPerHour.from(distance, elapsedTime).value)
-        values.put(COL_ALTITUDE_CHANGE, altitudeChange.value)
-        values.put(COL_SLOPE, Degrees.from(altitudeChange, distance).value)
+        withDatabase {db ->
+            val values = ContentValues()
+            values.put(COL_SEGMENT_POINT_ID, id.toString())
+            values.put(COL_DISTANCE, distance.value)
+            values.put(COL_ELAPSED_TIME, elapsedTime.value)
+            values.put(COL_AVG_SPEED, KilometersPerHour.from(distance, elapsedTime).value)
+            values.put(COL_ALTITUDE_CHANGE, altitudeChange.value)
+            values.put(COL_SLOPE, Degrees.from(altitudeChange, distance).value)
 
-        db.insert(TABLE_STATS_SEGMENT_POINTS, null, values)
-        db.close()
+            db.insert(TABLE_STATS_SEGMENT_POINTS, null, values)
+        }
     }
 
     fun getTrip(id: TripId): Trip {
-        val db = this.readableDatabase
-
-        val selectQuery = """
+        return withDatabase { db ->
+            val selectQuery = """
             SELECT *
             FROM $TABLE_TRIPS t
                 LEFT JOIN $VIEW_TRIPS vt ON t.$COL_ID = vt.$COL_TRIP_ID
                 WHERE t.$COL_ID = $id""".trimMargin()
 
-        val c = db.rawQuery(selectQuery, null)
+            val c = db.rawQuery(selectQuery, null)
 
-        c?.moveToFirst()
-        db.close()
-        return createTripFromCursor(c)
+            c?.moveToFirst()
+            createTripFromCursor(c)
+        }
     }
 
     fun getTripWithDetails(id: TripId): Trip {
@@ -161,64 +182,59 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
     }
 
     private fun getSegmentsForTripId(tripId: TripId): ArrayList<Segment> {
-        val db = this.readableDatabase
-
-        val selectQuery = """
-            SELECT ts.started_time, vs.* FROM $TABLE_TRIP_SEGMENTS ts
+        return withDatabase { db ->
+            val selectQuery = """
+            SELECT ts.started_time, ts.stopped_time, vs.* FROM $TABLE_TRIP_SEGMENTS ts
             inner join $VIEW_SEGMENTS vs on ts.id = vs.trip_segment_id
             WHERE ts.$COL_TRIP_ID = $tripId
         """.trimMargin()
 
-        val cursor = db.rawQuery(selectQuery, null)
+            val cursor = db.rawQuery(selectQuery, null)
 
 
-        val result = ArrayList<Segment>()
-        if (cursor != null) {
-            while (cursor.moveToNext()) {
-                val segment = createSegmentFromCursor(cursor)
-                val withSegmentPoints = segment.copy(segmentPoints = getSegmentPointsForSegmentId(segment.id))
-                result.add(withSegmentPoints)
+            val result = ArrayList<Segment>()
+            if (cursor != null) {
+                while (cursor.moveToNext()) {
+                    val segment = createSegmentFromCursor(cursor)
+                    val withSegmentPoints = segment.copy(segmentPoints = getSegmentPointsForSegmentId(segment.id))
+                    result.add(withSegmentPoints)
+                }
             }
+            result
         }
-        db.close()
-        return result
     }
 
     fun getSegment(id: SegmentId): Segment {
-        val db = this.readableDatabase
-
-        val selectQuery = """
-            SELECT ts.started_time, vs.* FROM $TABLE_TRIP_SEGMENTS ts
+        return withDatabase { db ->
+            val selectQuery = """
+            SELECT ts.started_time, ts.stopped_time, vs.* FROM $TABLE_TRIP_SEGMENTS ts
             inner join $VIEW_SEGMENTS vs on ts.id = vs.trip_segment_id
             WHERE ts.$COL_ID = $id
         """.trimMargin()
 
-        val c = db.rawQuery(selectQuery, null)
+            val c = db.rawQuery(selectQuery, null)
 
-        c?.moveToFirst()
-        val segment = createSegmentFromCursor(c)
-        db.close()
-        return segment
-//                .copy(segmentPoints = getSegmentPointsForSegmentId(segment.id))
+            c?.moveToFirst()
+            createSegmentFromCursor(c)
+            //                .copy(segmentPoints = getSegmentPointsForSegmentId(segment.id))
+        }
     }
 
     private fun getSegmentPointsForSegmentId(segmentId: SegmentId): ArrayList<SegmentPoint> {
-        val db = this.readableDatabase
+        return withDatabase { db ->
+            val selectQuery = """SELECT  * FROM $TABLE_SEGMENT_POINTS WHERE $COL_TRIP_SEGMENT_ID = $segmentId"""
 
-        val selectQuery = """SELECT  * FROM $TABLE_SEGMENT_POINTS WHERE $COL_TRIP_SEGMENT_ID = $segmentId"""
+            val c = db.rawQuery(selectQuery, null)
 
-        val c = db.rawQuery(selectQuery, null)
-
-        val result = ArrayList<SegmentPoint>()
-        if (c != null) {
-            while (c.moveToNext()) {
-                val segmentPoint = createTrackPointFromCursor(c)
-                result.add(segmentPoint)
+            val result = ArrayList<SegmentPoint>()
+            if (c != null) {
+                while (c.moveToNext()) {
+                    val segmentPoint = createTrackPointFromCursor(c)
+                    result.add(segmentPoint)
+                }
             }
+            result
         }
-        db.close()
-
-        return result
     }
 
     private fun createTrackPointFromCursor(cursor: Cursor) = SegmentPoint(
@@ -232,6 +248,7 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
     private fun createSegmentFromCursor(cursor: Cursor) = Segment(
             id = cursor.getLong(cursor.getColumnIndex(COL_TRIP_SEGMENT_ID)),
             startedTimestamp = Date(cursor.getLong(cursor.getColumnIndex(COL_SEGMENT_STARTED_TIMESTAMP))),
+            stoppedTimestamp = dateOrNull(cursor.getLong(cursor.getColumnIndex(COL_SEGMENT_STOPPED_TIMESTAMP))),
             distance = Kilometers((cursor.getDouble(cursor.getColumnIndex(COL_DISTANCE)) / 1000.0).toDouble()),
             elapsedTime = Milliseconds(cursor.getLong(cursor.getColumnIndex(COL_ELAPSED_TIME))),
             maxAltitude = Meters(cursor.getDouble(cursor.getColumnIndex(COL_MAX_ALTITUDE))),
@@ -239,6 +256,7 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
             maxSpeed = KilometersPerHour(cursor.getDouble(cursor.getColumnIndex(COL_MAX_SPEED)))
     )
 
+    private fun dateOrNull(long: Long?): Date? = if (long != null) { Date(long) } else { null }
 
     private fun createTripFromCursor(cursor: Cursor?): Trip {
         return Trip(
@@ -253,6 +271,9 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
         )
     }
 
+    private fun turnOnForeignKeySupport(db: SQLiteDatabase) {
+        db.execSQL("PRAGMA foreign_keys = ON;")
+    }
 
     private fun recreateViews(db: SQLiteDatabase) {
         arrayOf(VIEW_TRIPS, VIEW_SEGMENTS, VIEW_SEGMENT_POINTS).forEach { view -> db.execSQL("""DROP VIEW IF EXISTS $view""") }
@@ -311,27 +332,29 @@ internal class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATA
 
     private val CREATE_TABLE_TRIP_SEGMENTS = """CREATE TABLE $TABLE_TRIP_SEGMENTS (
             $COL_ID INTEGER PRIMARY KEY,
-            $COL_TRIP_ID INTEGER,
+            $COL_TRIP_ID INTEGER NOT NULL,
             $COL_SEGMENT_STARTED_TIMESTAMP DATETIME,
-            $COL_SEGMENT_STOPPED_TIMESTAMP DATETIME)""".trimMargin()
+            $COL_SEGMENT_STOPPED_TIMESTAMP DATETIME,
+            FOREIGN KEY($COL_TRIP_ID) REFERENCES $TABLE_TRIPS($COL_ID) ON DELETE CASCADE)""".trimMargin()
 
     private val CREATE_TABLE_SEGMENT_POINTS = """CREATE TABLE $TABLE_SEGMENT_POINTS(
             $COL_ID INTEGER PRIMARY KEY,
-            $COL_TRIP_SEGMENT_ID INTEGER,
-            $COL_TIMESTAMP DATETIME,
+            $COL_TRIP_SEGMENT_ID INTEGER NOT NULL,
+            $COL_TIMESTAMP DATETIME NOT NULL,
             $COL_LATITUDE DOUBLE,
             $COL_LONGITUDE DOUBLE,
             $COL_ALTITUDE INTEGER,
-            $COL_ACCURACY INTEGER)""".trimMargin()
+            $COL_ACCURACY INTEGER,
+            FOREIGN KEY($COL_TRIP_SEGMENT_ID) REFERENCES $TABLE_TRIP_SEGMENTS($COL_ID) ON DELETE CASCADE)""".trimMargin()
 
     private val CREATE_TABLE_STATS_SEGMENT_POINTS = """CREATE TABLE $TABLE_STATS_SEGMENT_POINTS(
-            $COL_SEGMENT_POINT_ID INTEGER UNIQUE,
+            $COL_SEGMENT_POINT_ID INTEGER UNIQUE NOT NULL,
             $COL_DISTANCE DOUBLE,
             $COL_ELAPSED_TIME DOUBLE,
             $COL_ALTITUDE_CHANGE DOUBLE,
             $COL_SLOPE DOUBLE,
             $COL_AVG_SPEED DOUBLE,
-            FOREIGN KEY($COL_SEGMENT_POINT_ID) REFERENCES $TABLE_SEGMENT_POINTS($COL_ID))""".trimMargin()
+            FOREIGN KEY($COL_SEGMENT_POINT_ID) REFERENCES $TABLE_SEGMENT_POINTS($COL_ID) ON DELETE CASCADE)""".trimMargin()
 
     private val CREATE_VIEW_SEGMENT_POINTS = """
         create view $VIEW_SEGMENT_POINTS as

@@ -6,6 +6,7 @@ import java.util.Date
 data class Segment(
     val id: SegmentId = 0,
     val startedTimestamp: Date,
+    val stoppedTimestamp: Date? = null,
     val distance: Kilometers = Kilometers(0.0),
     val elapsedTime: Milliseconds = Milliseconds(0),
     val maxSpeed: KilometersPerHour = KilometersPerHour(0.0),

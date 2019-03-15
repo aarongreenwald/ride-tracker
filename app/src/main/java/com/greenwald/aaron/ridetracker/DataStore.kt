@@ -49,5 +49,13 @@ internal class DataStore(context: Context) {
         return db.getSegment(id)
     }
 
+    fun deleteTrip(ids: Array<TripId>) {
+        db.deleteTrip(ids)
+    }
+
+    fun mergeTrips(from: Array<TripId>, to: TripId) {
+        db.mergeTrips(from, to)
+    }
+
 }
 
