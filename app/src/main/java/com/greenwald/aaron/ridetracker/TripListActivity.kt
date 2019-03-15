@@ -76,16 +76,19 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
         rv.adapter?.notifyDataSetChanged()
 
         editButton().isVisible = selectedTrips.size <= 1
+        mergeButton().isVisible = selectedTrips.size >= 2
+
         if (selectedTrips.isEmpty())
             mode.finish()
 
     }
 
     private fun editButton() = menu.getItem(0)
+    private fun mergeButton() = menu.getItem(2)
 
     override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean {
         val inflater: MenuInflater = mode.menuInflater
-        inflater.inflate(R.menu.trip_list_menu, menu)
+        inflater.inflate(R.menu.trip_list_selected_menu, menu)
         this.menu = menu
         this.mode = mode
         return true
@@ -100,6 +103,22 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
                 mode.finish()
                 true
             }
+            R.id.deleteTrip -> {
+                val ds = DataStore(applicationContext)
+                ds.deleteTrip(selectedTrips.map { trip -> trip.id }.toTypedArray())
+                mode.finish()
+                refreshList()
+                true
+            }
+            R.id.mergeTrips -> {
+                val ds = DataStore(applicationContext)
+                val to = selectedTrips.get(selectedTrips.lastIndex).id
+                ds.mergeTrips(selectedTrips.subList(0, selectedTrips.lastIndex).map { trip -> trip.id }.toTypedArray(), to)
+                mode.finish()
+                refreshList()
+                true
+            }
+
             else -> false
         }
 
