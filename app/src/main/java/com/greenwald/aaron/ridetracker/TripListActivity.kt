@@ -37,6 +37,28 @@ class TripListActivity : AppCompatActivity(), TripListFragment.OnListFragmentInt
         fab.setOnClickListener { createNewTrip() }
     }
 
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.trip_list_menu, menu)
+        return true
+    }
+
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.exportTrips) {
+            exportAllTrips()
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    private fun exportAllTrips() {
+        val ds = DataStore(this)
+        val trips = ds.trips.map { trip -> ds.getTripWithDetails(trip.id) }.toTypedArray()
+        val dir = this.getExternalFilesDir("backups")
+        GpxConverter().tripsToGpx(trips, "${dir}/data.gpx")
+    }
+
     private fun showCredits() {
         val intent = Intent(this, CreditsActivity::class.java)
         startActivity(intent)
